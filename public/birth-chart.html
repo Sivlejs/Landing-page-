@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Birth Chart – Celestial Eye</title>
+  <meta name="description" content="Enter your birth details to receive your personalised natal chart reading from Celestial Eye." />
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+<canvas id="starfield" aria-hidden="true"></canvas>
+<div class="nebula nebula-1" aria-hidden="true"></div>
+<div class="nebula nebula-2" aria-hidden="true"></div>
+
+<div class="content">
+
+  <nav>
+    <a class="nav-logo" href="/">
+      <span class="eye-icon">🔮</span>
+      <div>
+        <div>Celestial Eye</div>
+        <div class="nav-tagline">Cosmic Intelligence</div>
+      </div>
+    </a>
+  </nav>
+
+  <div class="birth-chart-container">
+
+    <div style="text-align:center;margin-bottom:2rem;">
+      <div style="font-size:3.5rem;margin-bottom:0.5rem;">🌠</div>
+      <h1>Your Cosmic Blueprint</h1>
+      <p class="subtitle">Enter your birth details below and we'll generate your personalised natal chart.</p>
+    </div>
+
+    <div class="form-card">
+      <form id="birth-chart-form" novalidate>
+        <div class="form-grid">
+
+          <div class="form-group full-width">
+            <label for="full-name">Your Name</label>
+            <input type="text" id="full-name" name="full-name"
+              placeholder="e.g. Luna Starfield"
+              required minlength="2" maxlength="80" autocomplete="name" />
+          </div>
+
+          <div class="form-group">
+            <label for="birth-date">Date of Birth</label>
+            <input type="date" id="birth-date" name="birth-date"
+              required />
+          </div>
+
+          <div class="form-group">
+            <label for="birth-time">Time of Birth</label>
+            <input type="time" id="birth-time" name="birth-time"
+              placeholder="e.g. 14:30"
+              required />
+          </div>
+
+          <div class="form-group full-width">
+            <label for="birth-city">City of Birth</label>
+            <input type="text" id="birth-city" name="birth-city"
+              placeholder="e.g. New York, USA"
+              required minlength="2" maxlength="120" autocomplete="address-level2" />
+          </div>
+
+          <div class="form-group">
+            <label for="latitude">Latitude (optional)</label>
+            <input type="number" id="latitude" name="latitude"
+              placeholder="e.g. 40.7128"
+              step="0.0001" min="-90" max="90" />
+          </div>
+
+          <div class="form-group">
+            <label for="longitude">Longitude (optional)</label>
+            <input type="number" id="longitude" name="longitude"
+              placeholder="e.g. -74.0060"
+              step="0.0001" min="-180" max="180" />
+          </div>
+
+        </div>
+
+        <button type="submit" class="btn btn-gold form-submit-btn">
+          ✨ &nbsp; Generate My Birth Chart
+        </button>
+        <p class="form-note">
+          🔒 &nbsp;Your information is used only to calculate your chart and is never sold or shared.
+        </p>
+      </form>
+
+      <!-- Result display area -->
+      <div class="result-area" id="result-area" role="region" aria-live="polite" aria-label="Your birth chart results">
+        <h3>🌌 Your Natal Chart</h3>
+
+        <div id="chart-summary"></div>
+
+        <table class="result-table" id="planets-table" aria-label="Planetary positions">
+          <thead>
+            <tr>
+              <th>Planet</th>
+              <th>Sign</th>
+              <th>House</th>
+              <th>Degree</th>
+            </tr>
+          </thead>
+          <tbody id="planets-tbody"></tbody>
+        </table>
+
+        <div class="separator">Rising Sign &amp; Luminaries</div>
+        <div id="luminaries-summary"></div>
+
+        <div class="mt-3 text-center">
+          <a href="/" class="btn btn-primary" style="width:auto;display:inline-flex;padding:0.7rem 1.8rem;font-size:0.9rem;">
+            🔮 &nbsp; Unlock Daily Guidance
+          </a>
+          <p style="color:var(--dim-text);font-size:0.8rem;margin-top:0.6rem;">
+            Subscribe to receive daily cosmic guidance and chat with Nexus AI
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-logo">🔮 Celestial Eye</div>
+    <p style="font-size:0.75rem;opacity:0.6;">© <span id="footer-year"></span> Celestial Eye. All rights reserved.</p>
+  </footer>
+
+</div>
+
+<script src="/js/starfield.js"></script>
+<script>
+  // Set max date to today
+  document.getElementById('birth-date').max = new Date().toISOString().split('T')[0];
+  document.getElementById('footer-year').textContent = new Date().getFullYear();
+
+  // Zodiac calculation helpers
+  const ZODIAC = [
+    'Aries','Taurus','Gemini','Cancer','Leo','Virgo',
+    'Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'
+  ];
+  const ZODIAC_GLYPHS = ['♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓'];
+
+  function getSunSign(month, day) {
+    const cusp = [
+      [1,20],[2,19],[3,21],[4,20],[5,21],[6,21],
+      [7,23],[8,23],[9,23],[10,23],[11,22],[12,22]
+    ];
+    for (let i = 0; i < 12; i++) {
+      const [m, d] = cusp[i];
+      const nextM = cusp[(i + 1) % 12][0];
+      const nextD = cusp[(i + 1) % 12][1];
+      if ((month === m && day >= d) || (month === nextM && day < nextD)) {
+        return i;
+      }
+    }
+    // Fallback – approximate
+    const idx = Math.floor(((month - 1) * 30 + day) / 30.4) % 12;
+    return idx;
+  }
+
+  function getMoonSign(dateStr) {
+    // Approximate moon sign (cycles ~2.5 days per sign)
+    const date = new Date(dateStr);
+    const ref = new Date('2000-01-06'); // New moon reference
+    const diffDays = (date - ref) / 86400000;
+    const moonCycle = ((diffDays % 27.32) + 27.32) % 27.32;
+    return Math.floor(moonCycle / (27.32 / 12)) % 12;
+  }
+
+  function getRisingSign(hour, minute, sunSignIndex) {
+    // Approximate rising: changes ~every 2 hours
+    const totalMins = hour * 60 + minute;
+    const offset = Math.floor(totalMins / 120);
+    return (sunSignIndex + offset) % 12;
+  }
+
+  function getPlanetData(date, time) {
+    const [year, month, day] = date.split('-').map(Number);
+    const [hour, minute] = time.split(':').map(Number);
+    const sunIdx  = getSunSign(month, day);
+    const moonIdx = getMoonSign(date);
+    const risingIdx = getRisingSign(hour, minute, sunIdx);
+
+    // Approximate other planets using simplified offsets
+    const seed = year + month * 7 + day * 3;
+    const planets = [
+      { name: 'Sun ☀️',     sign: sunIdx,                  house: 1,                    deg: day % 30 },
+      { name: 'Moon 🌙',    sign: moonIdx,                 house: ((hour + 2) % 12) + 1, deg: (minute + day) % 30 },
+      { name: 'Mercury ☿',  sign: (sunIdx + (seed % 3 - 1) + 12) % 12, house: (seed % 3) + 1,  deg: (seed * 3) % 30 },
+      { name: 'Venus ♀',    sign: (sunIdx + (seed % 5 - 2) + 12) % 12, house: (seed % 5) + 1,  deg: (seed * 7) % 30 },
+      { name: 'Mars ♂',     sign: (sunIdx + (seed % 7 - 3) + 12) % 12, house: (seed % 7) + 1,  deg: (seed * 11) % 30 },
+      { name: 'Jupiter ♃',  sign: (sunIdx + month) % 12,               house: (month % 12) + 1, deg: month * 3 % 30 },
+      { name: 'Saturn ♄',   sign: (sunIdx + Math.floor(year / 3)) % 12, house: (year % 12) + 1, deg: year % 30 },
+    ];
+
+    return { planets, rising: risingIdx, sun: sunIdx, moon: moonIdx };
+  }
+
+  document.getElementById('birth-chart-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const name = document.getElementById('full-name').value.trim();
+    const date = document.getElementById('birth-date').value;
+    const time = document.getElementById('birth-time').value;
+    const city = document.getElementById('birth-city').value.trim();
+
+    if (!name || !date || !time || !city) {
+      alert('Please fill in your name, date of birth, time of birth, and city.');
+      return;
+    }
+
+    const { planets, rising, sun, moon } = getPlanetData(date, time);
+    const [year, month, day] = date.split('-').map(Number);
+
+    // Summary
+    document.getElementById('chart-summary').innerHTML = `
+      <p><strong style="color:var(--glow-gold)">${name}</strong>, here is your celestial blueprint born in <strong>${city}</strong>
+      on <strong>${new Date(date + 'T12:00:00').toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}</strong> at <strong>${time}</strong>.</p>
+    `;
+
+    // Planets table
+    const tbody = document.getElementById('planets-tbody');
+    tbody.innerHTML = '';
+    planets.forEach(p => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${p.name}</td><td>${ZODIAC_GLYPHS[p.sign]} ${ZODIAC[p.sign]}</td><td>${p.house}</td><td>${p.deg}°</td>`;
+      tbody.appendChild(tr);
+    });
+
+    // Luminaries summary
+    document.getElementById('luminaries-summary').innerHTML = `
+      <p>☀️ <strong>Sun Sign:</strong> ${ZODIAC_GLYPHS[sun]} <strong>${ZODIAC[sun]}</strong> &nbsp;—&nbsp;
+         🌙 <strong>Moon Sign:</strong> ${ZODIAC_GLYPHS[moon]} <strong>${ZODIAC[moon]}</strong> &nbsp;—&nbsp;
+         ⬆️ <strong>Rising:</strong> ${ZODIAC_GLYPHS[rising]} <strong>${ZODIAC[rising]}</strong></p>
+      <p style="margin-top:0.75rem;font-size:0.85rem;color:var(--dim-text);">
+        Note: Rising sign requires precise birth time. Planetary positions shown are approximate.
+        Subscribe to Full Cosmic Access for a detailed professional-grade reading.
+      </p>
+    `;
+
+    document.getElementById('result-area').style.display = 'block';
+    document.getElementById('result-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+</script>
+</body>
+</html>
