@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payment Successful – Celestial Eye</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+<canvas id="starfield" aria-hidden="true"></canvas>
+<div class="nebula nebula-1" aria-hidden="true"></div>
+<div class="nebula nebula-2" aria-hidden="true"></div>
+
+<div class="content">
+
+  <nav>
+    <a class="nav-logo" href="/">
+      <span class="eye-icon">🔮</span>
+      <div>
+        <div>Celestial Eye</div>
+        <div class="nav-tagline">Cosmic Intelligence</div>
+      </div>
+    </a>
+  </nav>
+
+  <div class="success-container">
+    <span class="success-icon" aria-hidden="true">🌟</span>
+    <h1>Payment Successful!</h1>
+    <p>
+      The cosmos has received your request. Your cosmic journey begins now —
+      let the stars illuminate your path.
+    </p>
+
+    <div class="success-card">
+      <p style="color:var(--stardust);font-weight:600;margin-bottom:0.5rem;">What's Next</p>
+      <p id="next-steps-text" style="font-size:0.9rem;">
+        <!-- filled by JS depending on purchase type -->
+      </p>
+    </div>
+
+    <div id="chart-cta" style="display:none;">
+      <a href="/birth-chart.html" class="btn btn-gold" style="font-size:1rem;padding:0.95rem 2rem;">
+        🌠 &nbsp; Generate My Birth Chart Now
+      </a>
+    </div>
+
+    <div id="sub-cta" style="display:none;">
+      <p style="color:var(--dim-text);font-size:0.88rem;margin-bottom:1.5rem;">
+        Your Full Cosmic Access subscription is now active. Head to your birth chart to get started!
+      </p>
+      <a href="/birth-chart.html" class="btn btn-gold" style="font-size:1rem;padding:0.95rem 2rem;">
+        🌠 &nbsp; Start My Cosmic Journey
+      </a>
+    </div>
+
+    <p class="mt-3">
+      <a href="/" style="color:var(--stardust);font-size:0.85rem;">← Return to Home</a>
+    </p>
+  </div>
+
+  <footer>
+    <div class="footer-logo">🔮 Celestial Eye</div>
+    <p style="font-size:0.75rem;opacity:0.6;">© <span id="footer-year"></span> Celestial Eye. All rights reserved.</p>
+  </footer>
+
+</div>
+
+<script src="/js/starfield.js"></script>
+<script>
+  document.getElementById('footer-year').textContent = new Date().getFullYear();
+
+  const params = new URLSearchParams(window.location.search);
+  const type = params.get('type');
+
+  if (type === 'subscription') {
+    document.getElementById('next-steps-text').textContent =
+      'Your Full Cosmic Access subscription is active. You now have access to daily cosmic guides, personalised forecasts, and unlimited Nexus AI chat. Enter your birth details to unlock your full cosmic profile.';
+    document.getElementById('sub-cta').style.display = 'block';
+  } else {
+    document.getElementById('next-steps-text').textContent =
+      'Your $1.99 birth chart reading is unlocked! Click the button below to enter your birth details and generate your complete natal chart instantly.';
+    document.getElementById('chart-cta').style.display = 'block';
+  }
+</script>
+</body>
+</html>

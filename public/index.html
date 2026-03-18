@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Celestial Eye – Unlock Your Cosmic Blueprint</title>
+  <meta name="description" content="Discover your birth chart, receive daily cosmic guidance, and chat with Nexus AI. Choose a one-time birth chart reading for $1.99 or get full access with a monthly subscription." />
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+<!-- Starfield background -->
+<canvas id="starfield" aria-hidden="true"></canvas>
+
+<!-- Nebula blobs -->
+<div class="nebula nebula-1" aria-hidden="true"></div>
+<div class="nebula nebula-2" aria-hidden="true"></div>
+<div class="nebula nebula-3" aria-hidden="true"></div>
+
+<div class="content">
+
+  <!-- Navigation -->
+  <nav>
+    <div class="nav-logo">
+      <span class="eye-icon">🔮</span>
+      <div>
+        <div>Celestial Eye</div>
+        <div class="nav-tagline">Cosmic Intelligence</div>
+      </div>
+    </div>
+    <a href="#pricing" class="btn btn-primary" style="width:auto;padding:0.55rem 1.4rem;font-size:0.85rem;">
+      Get Started
+    </a>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="celestial-eye-wrapper">
+      <div class="celestial-eye">
+        <div class="eye-rays" aria-hidden="true"></div>
+        <div class="eye-outer">
+          <div class="eye-iris">
+            <div class="eye-pupil"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h1 class="hero-title">Unlock Your<br>Cosmic Blueprint</h1>
+    <p class="hero-subtitle">
+      The stars hold the map of your soul. Your birth chart reveals your deepest nature,
+      life purpose, and the cosmic forces shaping your journey.
+    </p>
+    <div class="stars-divider">✦ &nbsp; ✦ &nbsp; ✦</div>
+    <a href="#pricing" class="btn btn-primary" style="width:auto;padding:0.85rem 2.5rem;font-size:1rem;">
+      ✨ &nbsp; Explore Your Path
+    </a>
+  </section>
+
+  <!-- Features strip -->
+  <section class="features-section" aria-label="What we offer">
+    <div class="section-heading">
+      <h2>What Awaits You</h2>
+      <p>Ancient wisdom meets modern AI to illuminate your cosmic path</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <span class="f-icon">🌌</span>
+        <h3>Birth Chart Reading</h3>
+        <p>A detailed natal chart revealing planetary positions, houses, and aspects at the exact moment of your birth.</p>
+      </div>
+      <div class="feature-card">
+        <span class="f-icon">📅</span>
+        <h3>Daily Cosmic Guide</h3>
+        <p>Personalised daily insights, planetary transits, and cosmic energy forecasts tailored to your unique chart.</p>
+      </div>
+      <div class="feature-card">
+        <span class="f-icon">🤖</span>
+        <h3>Nexus AI Chat</h3>
+        <p>Ask anything about your chart, transits, or cosmic influences. Your personal astrology AI is always available.</p>
+      </div>
+      <div class="feature-card">
+        <span class="f-icon">⭐</span>
+        <h3>Celestial Insights</h3>
+        <p>Moon phases, retrogrades, eclipses, and rare planetary events — interpreted for your life and path.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section class="pricing-section" id="pricing" aria-label="Pricing plans">
+    <div class="section-heading">
+      <h2>Choose Your Journey</h2>
+      <p>Begin with a single reading or gain unlimited cosmic access</p>
+    </div>
+    <div class="pricing-grid">
+
+      <!-- Birth Chart Card -->
+      <div class="pricing-card">
+        <span class="card-badge badge-purple">One-Time</span>
+        <span class="card-icon">🌠</span>
+        <h3 class="card-title">Birth Chart Reading</h3>
+        <div class="card-price">
+          <div class="price-amount"><span class="currency">$</span>1.99</div>
+          <div class="price-period">one-time payment</div>
+        </div>
+        <p class="card-description">
+          Uncover your complete natal chart instantly. Perfect if you simply want
+          to know your cosmic blueprint with no ongoing commitment.
+        </p>
+        <ul class="feature-list" aria-label="Birth chart features">
+          <li><span class="check">✦</span> Complete natal birth chart</li>
+          <li><span class="check">✦</span> Sun, Moon &amp; Rising sign breakdown</li>
+          <li><span class="check">✦</span> Planetary positions &amp; houses</li>
+          <li><span class="check">✦</span> Key aspects &amp; interpretations</li>
+          <li><span class="check">✦</span> Instant digital delivery</li>
+        </ul>
+
+        <button class="btn btn-primary" id="chart-pay-btn" type="button">
+          ✨ &nbsp; Get My Birth Chart
+        </button>
+        <div id="paypal-button-container">
+          <div class="paypal-loading" id="paypal-loading-chart">Loading payment options…</div>
+        </div>
+      </div>
+
+      <!-- Full Access Card -->
+      <div class="pricing-card featured">
+        <span class="card-badge badge-gold">⭐ Most Popular</span>
+        <span class="card-icon gold-icon">🔮</span>
+        <h3 class="card-title">Full Cosmic Access</h3>
+        <div class="card-price">
+          <div class="price-amount"><span class="currency">$</span><span id="sub-price">9.99</span></div>
+          <div class="price-period">per month · cancel anytime</div>
+        </div>
+        <p class="card-description">
+          Everything in the birth chart reading <em>plus</em> unlimited daily guidance
+          and your personal Nexus AI astrology companion.
+        </p>
+        <ul class="feature-list" aria-label="Full access features">
+          <li><span class="check">✦</span> Everything in Birth Chart</li>
+          <li><span class="check">✦</span> Daily personalised cosmic guide</li>
+          <li><span class="check">✦</span> Nexus AI chat — unlimited questions</li>
+          <li><span class="check">✦</span> Monthly &amp; yearly forecasts</li>
+          <li><span class="check">✦</span> Moon phases &amp; eclipse alerts</li>
+          <li><span class="check">✦</span> Retrograde survival guides</li>
+        </ul>
+
+        <button class="btn btn-gold" id="sub-pay-btn" type="button">
+          🌟 &nbsp; Start Full Access
+        </button>
+        <div id="paypal-subscription-container">
+          <div class="paypal-loading" id="paypal-loading-sub">Loading payment options…</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Testimonials -->
+  <section class="testimonials-section" aria-label="Customer testimonials">
+    <div class="testimonials-inner">
+      <div class="section-heading">
+        <h2>Voices from the Stars</h2>
+        <p>What our cosmic community says</p>
+      </div>
+      <div class="testimonials-grid">
+        <div class="testimonial-card">
+          <div class="testimonial-stars" aria-label="5 stars">★★★★★</div>
+          <p class="testimonial-text">"The birth chart reading was incredibly accurate. It described my personality in ways I'd never articulated but always felt. Absolutely worth every penny."</p>
+          <div class="testimonial-author">— Serena M., Cancer Rising</div>
+        </div>
+        <div class="testimonial-card">
+          <div class="testimonial-stars" aria-label="5 stars">★★★★★</div>
+          <p class="testimonial-text">"The daily guide has become my morning ritual. Nexus AI answered my deep questions about my Saturn return in a way that genuinely helped me navigate a tough season."</p>
+          <div class="testimonial-author">— Damien R., Scorpio Sun</div>
+        </div>
+        <div class="testimonial-card">
+          <div class="testimonial-stars" aria-label="5 stars">★★★★★</div>
+          <p class="testimonial-text">"I was skeptical, but the chart reading aligned with major life events I'd been wrestling with. The full subscription is a gift I give myself every month."</p>
+          <div class="testimonial-author">— Priya K., Aquarius Moon</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="faq-section" aria-label="Frequently asked questions">
+    <div class="section-heading">
+      <h2>Frequently Asked Questions</h2>
+    </div>
+    <div class="faq-item">
+      <button class="faq-question" aria-expanded="false" type="button">
+        What information do I need for my birth chart?
+        <span class="faq-chevron" aria-hidden="true">▼</span>
+      </button>
+      <div class="faq-answer" role="region">
+        You'll need your full date of birth, exact time of birth (check your birth certificate), and the city/country where you were born. The more precise the birth time, the more accurate your chart.
+      </div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-question" aria-expanded="false" type="button">
+        Is my payment secure?
+        <span class="faq-chevron" aria-hidden="true">▼</span>
+      </button>
+      <div class="faq-answer" role="region">
+        Absolutely. All payments are processed securely through PayPal. We never store your card details — PayPal handles all payment security on their encrypted platform.
+      </div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-question" aria-expanded="false" type="button">
+        Can I cancel my subscription anytime?
+        <span class="faq-chevron" aria-hidden="true">▼</span>
+      </button>
+      <div class="faq-answer" role="region">
+        Yes! You can cancel your Full Cosmic Access subscription at any time directly through your PayPal account. There are no cancellation fees or penalties.
+      </div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-question" aria-expanded="false" type="button">
+        What is Nexus AI?
+        <span class="faq-chevron" aria-hidden="true">▼</span>
+      </button>
+      <div class="faq-answer" role="region">
+        Nexus AI is your personal astrology companion powered by artificial intelligence. It understands your unique birth chart and can answer questions about planetary transits, synastry, life guidance, and more — available 24/7.
+      </div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-question" aria-expanded="false" type="button">
+        What's the difference between the one-time chart and the subscription?
+        <span class="faq-chevron" aria-hidden="true">▼</span>
+      </button>
+      <div class="faq-answer" role="region">
+        The $1.99 birth chart is a one-time, complete natal chart reading — perfect for beginners. The monthly subscription adds ongoing daily cosmic guides personalised to your chart, unlimited Nexus AI chat, and regular forecasts for continued cosmic insight.
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-logo">🔮 Celestial Eye</div>
+    <p>Cosmic Intelligence &nbsp;·&nbsp; Ancient Wisdom &nbsp;·&nbsp; Modern AI</p>
+    <p class="mt-2" style="font-size:0.75rem;opacity:0.6;">
+      © <span id="footer-year"></span> Celestial Eye. All rights reserved.<br>
+      Payments processed securely by PayPal.
+    </p>
+  </footer>
+
+</div><!-- /.content -->
+
+<!-- PayPal JS SDK (loaded dynamically with client-id from server) -->
+<script src="/js/main.js"></script>
+
+</body>
+</html>
