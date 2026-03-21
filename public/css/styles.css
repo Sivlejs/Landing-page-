@@ -701,3 +701,28 @@ footer .footer-logo {
   .pricing-card { padding: 2rem 1.4rem; }
   .form-card { padding: 1.8rem 1.2rem; }
 }
+
+/* ── PayPal status messages ───────────────────────────────── */
+.pp-status-msg {
+  font-size: 0.82rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 8px;
+  margin-bottom: 0.65rem;
+  text-align: center;
+  line-height: 1.45;
+}
+.pp-status-loading {
+  color: var(--dim-text);
+  background: rgba(168, 85, 247, 0.08);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+}
+.pp-status-error {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.pp-status-info {
+  color: var(--stardust);
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid var(--border-glow);
+}
