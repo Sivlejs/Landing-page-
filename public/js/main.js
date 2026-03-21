@@ -82,9 +82,78 @@ if (subPayBtn) {
 if (ppChartContainer) ppChartContainer.style.display = 'none';
 if (ppSubContainer)   ppSubContainer.style.display   = 'none';
 
+// ── Status / error helpers ─────────────────────────────────
+
+/**
+ * Show a status message inside a container element.
+ * @param {HTMLElement} container
+ * @param {'loading'|'error'|'info'} type
+ * @param {string} message
+ */
+function setStatus(container, type, message) {
+  if (!container) return;
+  let el = container.querySelector('.pp-status-msg');
+  if (!el) {
+    el = document.createElement('p');
+    el.className = 'pp-status-msg';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    container.prepend(el);
+  }
+  el.className = 'pp-status-msg pp-status-' + type;
+  el.textContent = message;
+}
+
+function clearStatus(container) {
+  if (!container) return;
+  const el = container.querySelector('.pp-status-msg');
+  if (el) el.remove();
+}
+
 // ── Load PayPal SDK and render buttons ─────────────────────
+
+const ELLIPSIS = '\u2026';
+
+/**
+ * Load the PayPal JS SDK exactly once, returning a promise that resolves
+ * when window.paypal is ready.
+ */
+let sdkLoadPromise = null;
+
+function ensurePayPalSdk(clientId) {
+  if (sdkLoadPromise) return sdkLoadPromise;
+  sdkLoadPromise = new Promise((resolve, reject) => {
+    // If already loaded (e.g. hard-refresh with cached script)
+    if (window.paypal) { resolve(); return; }
+
+    const src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&intent=capture&vault=true`;
+
+    // Guard against a pre-existing script tag with a different URL
+    const existing = document.querySelector('script[src^="https://www.paypal.com/sdk/js"]');
+    if (existing) {
+      // Wait for it to finish loading if still in-flight
+      if (window.paypal) { resolve(); return; }
+      existing.addEventListener('load', resolve);
+      existing.addEventListener('error', reject);
+      return;
+    }
+
+    const s = document.createElement('script');
+    s.src = src;
+    s.setAttribute('data-sdk-integration-source', 'celestialeye');
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('PayPal SDK script failed to load'));
+    document.head.appendChild(s);
+  });
+  return sdkLoadPromise;
+}
+
 async function loadPayPal() {
   try {
+    // Show "Connecting to PayPal…" in both containers while we fetch config
+    setStatus(ppChartContainer, 'loading', 'Connecting to PayPal' + ELLIPSIS);
+    setStatus(ppSubContainer, 'loading', 'Connecting to PayPal' + ELLIPSIS);
+
     const res = await fetch('/api/paypal/config');
     if (!res.ok) throw new Error('Config unavailable');
     const config = await res.json();
@@ -95,8 +164,11 @@ async function loadPayPal() {
       return;
     }
 
-    // Load PayPal JS SDK once — vault=true enables subscriptions; intent=capture supports one-time orders
-    await loadScript(`https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&intent=capture&vault=true`);
+    // Load PayPal JS SDK once – vault=true enables subscriptions; intent=capture supports one-time
+    await ensurePayPalSdk(clientId);
+
+    clearStatus(ppChartContainer);
+    clearStatus(ppSubContainer);
 
     renderPaymentButtons(subscriptionPlanId);
 
@@ -106,22 +178,14 @@ async function loadPayPal() {
   }
 }
 
-function loadScript(src) {
-  return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
-    const s = document.createElement('script');
-    s.src = src;
-    s.onload = resolve;
-    s.onerror = reject;
-    document.head.appendChild(s);
-  });
-}
-
 function showConfigError() {
   const loadingEls = document.querySelectorAll('.paypal-loading');
   loadingEls.forEach(el => {
     el.textContent = 'Payment system is being configured. Please check back soon.';
   });
+  // Also clear any status messages
+  clearStatus(ppChartContainer);
+  clearStatus(ppSubContainer);
 }
 
 function renderPaymentButtons(subscriptionPlanId) {
@@ -138,20 +202,46 @@ function renderPaymentButtons(subscriptionPlanId) {
         shape: 'rect',
         label: 'pay',
       },
+
       createOrder: async () => {
-        const r = await fetch('/api/paypal/create-order', { method: 'POST' });
-        if (!r.ok) throw new Error('Order creation failed');
-        const data = await r.json();
-        return data.id;
+        setStatus(ppChartContainer, 'loading', 'Processing' + ELLIPSIS);
+        try {
+          const r = await fetch('/api/paypal/create-order', { method: 'POST' });
+          const data = await r.json();
+          if (!r.ok) {
+            const refCode = data.correlationId || 'unknown';
+            throw new Error(`Order creation failed (ref: ${refCode})`);
+          }
+          clearStatus(ppChartContainer);
+          return data.id;
+        } catch (err) {
+          setStatus(ppChartContainer, 'error', err.message);
+          throw err;
+        }
       },
+
       onApprove: async (data) => {
-        const r = await fetch(`/api/paypal/capture-order/${data.orderID}`, { method: 'POST' });
-        if (!r.ok) throw new Error('Capture failed');
-        window.location.href = '/success.html?type=chart';
+        setStatus(ppChartContainer, 'loading', 'Completing payment' + ELLIPSIS);
+        try {
+          const r = await fetch(`/api/paypal/capture-order/${data.orderID}`, { method: 'POST' });
+          const result = await r.json();
+          if (!r.ok) {
+            const refCode = result.correlationId || 'unknown';
+            throw new Error(`Payment capture failed (ref: ${refCode})`);
+          }
+          window.location.href = '/success.html?type=chart';
+        } catch (err) {
+          setStatus(ppChartContainer, 'error', err.message);
+        }
       },
+
+      onCancel: () => {
+        clearStatus(ppChartContainer);
+      },
+
       onError: (err) => {
         console.error('PayPal one-time payment error:', err);
-        alert('Payment failed. Please try again or contact support.');
+        setStatus(ppChartContainer, 'error', 'Payment failed. Please try again or contact support.');
       },
     }).render('#paypal-button-container').catch(err => {
       console.error('Failed to render one-time payment button:', err);
@@ -162,7 +252,6 @@ function renderPaymentButtons(subscriptionPlanId) {
   if (loadingSub) loadingSub.remove();
 
   if (subscriptionPlanId && subscriptionPlanId !== 'your_subscription_plan_id_here' && window.paypal && ppSubContainer) {
-    // SDK already loaded above — render subscription button directly
     window.paypal.Buttons({
       style: {
         layout: 'vertical',
@@ -170,21 +259,31 @@ function renderPaymentButtons(subscriptionPlanId) {
         shape: 'rect',
         label: 'subscribe',
       },
+
       createSubscription: (_data, actions) => {
+        setStatus(ppSubContainer, 'loading', 'Setting up subscription' + ELLIPSIS);
         return actions.subscription.create({ plan_id: subscriptionPlanId });
       },
-      onApprove: () => {
+
+      onApprove: (data) => {
+        setStatus(ppSubContainer, 'loading', 'Activating your subscription' + ELLIPSIS);
+        console.log('Subscription approved, ID:', data.subscriptionID);
         window.location.href = '/success.html?type=subscription';
       },
+
+      onCancel: () => {
+        clearStatus(ppSubContainer);
+      },
+
       onError: (err) => {
         console.error('PayPal subscription error:', err);
-        alert('Subscription setup failed. Please try again.');
+        setStatus(ppSubContainer, 'error', 'Subscription setup failed. Please try again or contact support.');
       },
     }).render('#paypal-subscription-container').catch(err => {
       console.error('Failed to render subscription button:', err);
     });
   } else if (ppSubContainer) {
-    // Show a contact/waitlist message if no plan ID configured yet
+    // Show a contact/waitlist message if no plan ID configured
     ppSubContainer.innerHTML = `
       <p style="color:var(--dim-text);font-size:0.85rem;text-align:center;padding:0.75rem 0;">
         Subscription payments coming soon.<br>

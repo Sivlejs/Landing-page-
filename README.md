@@ -237,9 +237,82 @@ Your site will be live at `https://celestial-eye-landing.onrender.com` (or your 
 
 ---
 
-## PayPal Webhook (optional)
+## Webhook Setup (Live & Sandbox)
 
-For production, set up a PayPal webhook to handle subscription events (cancellations, renewals) in `server.js`. Endpoint: `POST /api/paypal/webhook`.
+PayPal webhooks let the server confirm payment/subscription state server-side,
+independent of the browser callback.
+
+### Setting up webhooks
+
+1. **PayPal Developer Dashboard** → **My Apps & Credentials** → your app
+2. Scroll to **Webhooks** → click **Add Webhook**
+3. Set the **Webhook URL** to:
+   - **Live**: `https://your-domain.com/api/paypal/webhook`
+   - **Sandbox**: Use a tunnelling tool such as [ngrok](https://ngrok.com) to
+     expose your local server, e.g. `https://abc123.ngrok.io/api/paypal/webhook`
+4. Select the following event types:
+   - `PAYMENT.CAPTURE.COMPLETED`
+   - `BILLING.SUBSCRIPTION.CREATED`
+   - `BILLING.SUBSCRIPTION.ACTIVATED`
+   - `BILLING.SUBSCRIPTION.CANCELLED`
+   - `BILLING.SUBSCRIPTION.PAYMENT.FAILED`
+5. Click **Save** → copy the **Webhook ID** shown in the list
+6. Add it to your environment:
+   ```dotenv
+   PAYPAL_WEBHOOK_ID=WH-XXXXXXXXXXXXXXXX
+   ```
+7. Restart the server
+
+> ⚠️ If `PAYPAL_WEBHOOK_ID` is not set, the server will log a warning and skip
+> signature verification. **Always set it in Live mode.**
+
+---
+
+## Environment Variables Reference
+
+| Variable | Required | Description |
+|---|---|---|
+| `PAYPAL_CLIENT_ID` | ✅ | PayPal app Client ID (public, sent to browser) |
+| `PAYPAL_CLIENT_SECRET` | ✅ | PayPal app Secret (server-only, never exposed) |
+| `PAYPAL_MODE` | ✅ | `sandbox` or `live` |
+| `PAYPAL_SUBSCRIPTION_PLAN_ID` | ⚠️ optional | Billing plan ID (`P-…`) for the monthly subscription |
+| `PAYPAL_WEBHOOK_ID` | ⚠️ production | Webhook ID from PayPal dashboard for signature verification |
+| `PORT` | ❌ | HTTP port (default: `3000`) |
+
+---
+
+## Observability / Structured Logs
+
+All server events are logged as JSON to stdout:
+
+```json
+{"ts":"2024-01-01T00:00:00.000Z","level":"info","event":"create-order:ok","mode":"live","correlationId":"A1B2C3","orderId":"5TY80502CQ286820X"}
+```
+
+Key events logged:
+- `startup:ok` / `startup:fatal` / `startup:env-mismatch`
+- `create-order:start` / `create-order:ok` / `create-order:fail`
+- `capture-order:start` / `capture-order:ok` / `capture-order:fail`
+- `webhook:received` / `webhook:duplicate` / `webhook:invalid-signature`
+- `webhook:capture-completed` / `webhook:subscription-*`
+
+Each request has a `correlationId` which is also returned to the client on
+error so users can quote it to support.
+
+---
+
+## Security Headers
+
+The server adds these headers to every response:
+
+| Header | Value |
+|---|---|
+| `X-Frame-Options` | `SAMEORIGIN` |
+| `X-Content-Type-Options` | `nosniff` |
+| `X-XSS-Protection` | `1; mode=block` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `Content-Security-Policy` | Restricts scripts/frames to `self` + `paypal.com` |
+| `Strict-Transport-Security` | Set in live mode only |
 
 ---
 
@@ -249,12 +322,17 @@ For production, set up a PayPal webhook to handle subscription events (cancellat
 
 | Problem | Solution |
 |---------|----------|
+| `startup:env-mismatch` error on boot | `PAYPAL_MODE=live` but Client ID looks like a sandbox credential. Use your Live Client ID. |
 | "PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET must be set" | Ensure your `.env` file exists and contains valid credentials |
 | PayPal buttons don't appear | Check browser console for errors; verify `PAYPAL_CLIENT_ID` is correct |
 | "Failed to create order" | Verify your API credentials are valid and not expired |
 | Subscription button not working | Ensure `PAYPAL_SUBSCRIPTION_PLAN_ID` is set to a valid plan ID |
 | One-time payment and subscription buttons conflict | Previously caused by loading the SDK twice. Both flows are now supported by a **single** SDK load (`vault=true&intent=capture`). If you see SDK errors on an old deployment, hard-refresh the page to clear any cached scripts. |
 | Can't log into sandbox | Use sandbox account credentials from the Developer Dashboard, not your real PayPal account |
+| Webhook `401 Invalid webhook signature` | Verify `PAYPAL_WEBHOOK_ID` matches the ID in the PayPal dashboard exactly. |
+| Webhook events not arriving locally | Use ngrok: `ngrok http 3000`. Update the webhook URL in the PayPal dashboard. |
+| `CORS` errors calling PayPal API | Calls to PayPal REST API are made server-side — there should be no CORS errors. If you see them, ensure you are calling `/api/paypal/*` (your own server), not PayPal directly from the browser. |
+| Mixed environment (Live SDK + Sandbox backend) | Ensure `PAYPAL_MODE` matches the account type of your Client ID and Secret. The server will refuse to start if the Client ID contains "sandbox" in live mode. |
 
 ### Checking Your Configuration
 
