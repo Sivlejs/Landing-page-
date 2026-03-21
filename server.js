@@ -96,6 +96,8 @@ const PAYPAL_BASE =
     ? 'https://api-m.paypal.com'
     : 'https://api-m.sandbox.paypal.com';
 
+const { recordPaidOrder, hasInMemoryAccess, PAYPAL_ORDER_ID_PATTERN } = require('./lib/entitlement');
+
 // ---------------------------------------------------------------------------
 // In-memory webhook event log (dedup + audit trail)
 // Replace with a database store in a production environment with persistence.
@@ -210,9 +212,6 @@ function makeCorrelationId() {
   return crypto.randomBytes(6).toString('hex').toUpperCase();
 }
 
-// PayPal order IDs are exactly 17 uppercase alphanumeric characters
-const PAYPAL_ORDER_ID_PATTERN = /^[A-Z0-9]{17}$/;
-
 // ---------------------------------------------------------------------------
 // API: provide PayPal config to the client
 // ---------------------------------------------------------------------------
@@ -315,6 +314,13 @@ app.post('/api/paypal/capture-order/:orderID', apiLimiter, async (req, res) => {
       orderID,
       captureStatus: capture.data.status,
     });
+
+    // Grant full birth chart access for this order ID so /api/verify-access
+    // can confirm the entitlement without another PayPal round-trip.
+    if (capture.data.status === 'COMPLETED') {
+      recordPaidOrder(orderID);
+    }
+
     res.json(Object.assign({}, capture.data, { correlationId }));
   } catch (err) {
     log('error', 'capture-order:fail', {
@@ -325,6 +331,53 @@ app.post('/api/paypal/capture-order/:orderID', apiLimiter, async (req, res) => {
       message: err.message,
     });
     res.status(500).json({ error: 'Failed to capture order', correlationId });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// API: verify that a one-time order grants full birth chart access
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /api/verify-access?orderID=<id>
+ *
+ * Fast path  – checks the in-memory grant cache populated at capture time.
+ * Slow path  – if not cached (e.g. after a server restart), verifies the order
+ *              status directly against the PayPal Orders API and re-populates
+ *              the cache on success so subsequent calls are instant.
+ *
+ * Always returns JSON { hasAccess: boolean }.
+ */
+app.get('/api/verify-access', apiLimiter, async (req, res) => {
+  const rawId = (req.query.orderID || '').toString().trim();
+
+  // Reject anything that doesn't look like a PayPal order ID.
+  if (!PAYPAL_ORDER_ID_PATTERN.test(rawId)) {
+    return res.json({ hasAccess: false });
+  }
+
+  // Fast path: already recorded in memory.
+  if (hasInMemoryAccess(rawId)) {
+    return res.json({ hasAccess: true });
+  }
+
+  // Slow path: server may have restarted – re-validate against PayPal.
+  try {
+    const accessToken = await getPayPalAccessToken();
+    const order = await axios.get(
+      `${PAYPAL_BASE}/v2/checkout/orders/${rawId}`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
+    const completed = order.data.status === 'COMPLETED';
+    if (completed) {
+      recordPaidOrder(rawId); // warm the cache for subsequent requests
+    }
+    return res.json({ hasAccess: completed });
+  } catch (err) {
+    log('warn', 'verify-access:paypal-error', { rawId, message: err.message });
+    return res.json({ hasAccess: false });
   }
 });
 

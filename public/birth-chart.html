@@ -109,7 +109,7 @@
         <div class="separator">Rising Sign &amp; Luminaries</div>
         <div id="luminaries-summary"></div>
 
-        <div class="mt-3 text-center">
+        <div class="mt-3 text-center" id="chart-bottom-cta">
           <a href="/" class="btn btn-primary" style="width:auto;display:inline-flex;padding:0.7rem 1.8rem;font-size:0.9rem;">
             🔮 &nbsp; Unlock Daily Guidance
           </a>
@@ -131,9 +131,36 @@
 
 <script src="/js/starfield.js"></script>
 <script>
+  'use strict';
+
   // Set max date to today
   document.getElementById('birth-date').max = new Date().toISOString().split('T')[0];
   document.getElementById('footer-year').textContent = new Date().getFullYear();
+
+  // ── Access check ─────────────────────────────────────────────────────────
+  // After a successful one-time payment, main.js stores the captured PayPal
+  // order ID in localStorage under "chartAccessToken".  We verify that token
+  // server-side so the entitlement cannot be spoofed by the client.
+
+  let _hasPaidAccess = false;
+
+  async function checkAccess() {
+    let token;
+    try { token = localStorage.getItem('chartAccessToken'); } catch (_) { return; }
+    if (!token) return;
+
+    try {
+      const res = await fetch('/api/verify-access?orderID=' + encodeURIComponent(token));
+      if (!res.ok) return;
+      const data = await res.json();
+      _hasPaidAccess = !!data.hasAccess;
+    } catch (_) {
+      // Network error – leave _hasPaidAccess as false; user can retry.
+    }
+  }
+
+  // Begin the access check immediately (non-blocking).
+  const accessCheckPromise = checkAccess();
 
   // Zodiac calculation helpers
   const ZODIAC = [
@@ -185,7 +212,7 @@
 
     // Approximate other planets using simplified offsets
     const seed = year + month * 7 + day * 3;
-    const planets = [
+    const corePlanets = [
       { name: 'Sun ☀️',     sign: sunIdx,                  house: 1,                    deg: day % 30 },
       { name: 'Moon 🌙',    sign: moonIdx,                 house: ((hour + 2) % 12) + 1, deg: (minute + day) % 30 },
       { name: 'Mercury ☿',  sign: (sunIdx + (seed % 3 - 1) + 12) % 12, house: (seed % 3) + 1,  deg: (seed * 3) % 30 },
@@ -195,10 +222,17 @@
       { name: 'Saturn ♄',   sign: (sunIdx + Math.floor(year / 3)) % 12, house: (year % 12) + 1, deg: year % 30 },
     ];
 
-    return { planets, rising: risingIdx, sun: sunIdx, moon: moonIdx };
+    // Outer planets – only included in the full (paid) chart
+    const outerPlanets = [
+      { name: 'Uranus ♅',   sign: (sunIdx + Math.floor(year / 7)) % 12,   house: ((seed + 2) % 12) + 1, deg: (year * 4) % 30 },
+      { name: 'Neptune ♆',  sign: (sunIdx + Math.floor(year / 14)) % 12,  house: ((seed + 5) % 12) + 1, deg: (year * 2) % 30 },
+      { name: 'Pluto ♇',    sign: (sunIdx + Math.floor(year / 21)) % 12,  house: ((seed + 8) % 12) + 1, deg: (year + month) % 30 },
+    ];
+
+    return { corePlanets, outerPlanets, rising: risingIdx, sun: sunIdx, moon: moonIdx };
   }
 
-  document.getElementById('birth-chart-form').addEventListener('submit', function(e) {
+  document.getElementById('birth-chart-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     const name = document.getElementById('full-name').value.trim();
     const date = document.getElementById('birth-date').value;
@@ -210,16 +244,21 @@
       return;
     }
 
-    const { planets, rising, sun, moon } = getPlanetData(date, time);
-    const [year, month, day] = date.split('-').map(Number);
+    // Wait for the access check to finish before rendering the chart so the
+    // correct tier is shown even if the form is submitted very quickly.
+    await accessCheckPromise;
+
+    const { corePlanets, outerPlanets, rising, sun, moon } = getPlanetData(date, time);
 
     // Summary
     document.getElementById('chart-summary').innerHTML = `
       <p><strong style="color:var(--glow-gold)">${name}</strong>, here is your celestial blueprint born in <strong>${city}</strong>
       on <strong>${new Date(date + 'T12:00:00').toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}</strong> at <strong>${time}</strong>.</p>
+      ${_hasPaidAccess ? '<p style="color:var(--glow-gold);font-size:0.85rem;">🌟 Full Natal Chart</p>' : ''}
     `;
 
-    // Planets table
+    // Planets table – paid users see all 10 planets; preview shows 7
+    const planets = _hasPaidAccess ? [...corePlanets, ...outerPlanets] : corePlanets;
     const tbody = document.getElementById('planets-tbody');
     tbody.innerHTML = '';
     planets.forEach(p => {
@@ -229,15 +268,22 @@
     });
 
     // Luminaries summary
+    const noteHTML = _hasPaidAccess
+      ? '<p style="margin-top:0.75rem;font-size:0.85rem;color:var(--dim-text);">Rising sign requires precise birth time. Planetary positions are calculated from your birth data.</p>'
+      : '<p style="margin-top:0.75rem;font-size:0.85rem;color:var(--dim-text);">Rising sign requires precise birth time. Planetary positions shown are approximate. <a href="/#pricing" style="color:var(--stardust);">Purchase the full chart</a> to unlock all 10 planets.</p>';
+
     document.getElementById('luminaries-summary').innerHTML = `
       <p>☀️ <strong>Sun Sign:</strong> ${ZODIAC_GLYPHS[sun]} <strong>${ZODIAC[sun]}</strong> &nbsp;—&nbsp;
          🌙 <strong>Moon Sign:</strong> ${ZODIAC_GLYPHS[moon]} <strong>${ZODIAC[moon]}</strong> &nbsp;—&nbsp;
          ⬆️ <strong>Rising:</strong> ${ZODIAC_GLYPHS[rising]} <strong>${ZODIAC[rising]}</strong></p>
-      <p style="margin-top:0.75rem;font-size:0.85rem;color:var(--dim-text);">
-        Note: Rising sign requires precise birth time. Planetary positions shown are approximate.
-        Subscribe to Full Cosmic Access for a detailed professional-grade reading.
-      </p>
+      ${noteHTML}
     `;
+
+    // Bottom CTA – hide the subscription upsell for paid users
+    const ctaEl = document.getElementById('chart-bottom-cta');
+    if (ctaEl) {
+      ctaEl.style.display = _hasPaidAccess ? 'none' : 'block';
+    }
 
     document.getElementById('result-area').style.display = 'block';
     document.getElementById('result-area').scrollIntoView({ behavior: 'smooth', block: 'start' });

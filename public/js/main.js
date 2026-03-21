@@ -229,6 +229,9 @@ function renderPaymentButtons(subscriptionPlanId) {
             const refCode = result.correlationId || 'unknown';
             throw new Error(`Payment capture failed (ref: ${refCode})`);
           }
+          // Persist the order ID so the birth-chart page can verify access
+          // on the current visit and after a page refresh.
+          try { localStorage.setItem('chartAccessToken', data.orderID); } catch (_) { /* private browsing */ }
           window.location.href = '/success.html?type=chart';
         } catch (err) {
           setStatus(ppChartContainer, 'error', err.message);
