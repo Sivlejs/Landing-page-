@@ -1,9 +1,196 @@
 # Celestial Eye – Landing Page
 
-A beautiful, celestial-themed landing page for the **Celestial Eye** service. Visitors can:
+A celestial-themed landing page for the **Celestial Eye** service with PayPal-powered payments. Visitors can purchase a one-time birth chart reading ($1.99) or subscribe for full monthly cosmic access.
 
-- **Get a Birth Chart reading** for a one-time payment of **$1.99** via PayPal, then enter their birth details to generate their natal chart instantly.
-- **Subscribe for Full Cosmic Access** (monthly) to get everything: the birth chart, a personalised daily cosmic guide, and unlimited **Nexus AI** astrology chat.
+---
+
+## Complete Setup Guide
+
+Follow these steps **in order** — each step builds on the last.
+
+---
+
+### Step 1 — Prerequisites
+
+Make sure you have the following installed on your machine:
+
+- **Node.js** v18 or later – download from [nodejs.org](https://nodejs.org)
+- **npm** (included with Node.js)
+- A **PayPal account** – sign up free at [paypal.com](https://www.paypal.com)
+
+Verify Node.js is installed:
+
+```bash
+node --version   # should print v18.x.x or higher
+npm --version
+```
+
+---
+
+### Step 2 — Install project dependencies
+
+```bash
+npm install
+```
+
+---
+
+### Step 3 — Create a PayPal Developer App (get Client ID + Secret)
+
+> You need **both** the Client ID and the Secret. The Client ID alone is not enough — the Secret is used server-side to create and capture orders.
+
+1. Go to [developer.paypal.com](https://developer.paypal.com) and log in with your PayPal account.
+2. In the left sidebar, click **Apps & Credentials**.
+3. Make sure the toggle at the top right is set to **Sandbox** (for testing).
+4. Click **Create App**.
+5. Enter a name (e.g. `Celestial Eye`) and select **Merchant** as the app type, then click **Create App**.
+6. On the app details page you will see:
+   - **Client ID** — copy this value; you'll need it in Step 5.
+   - **Secret** — click **Show**, then copy this value; you'll need it in Step 5.
+
+> ⚠️ Never share your Secret or commit it to source control. The `.env` file is already in `.gitignore`.
+
+---
+
+### Step 4 — Create a monthly subscription plan (for Full Cosmic Access)
+
+> This step is **optional** — the $1.99 birth chart payment works without it. Skip to Step 5 if you don't need the subscription feature yet.
+
+#### 4a — Create a Product
+
+1. In the PayPal Developer Dashboard, go to **Sandbox → Subscriptions → Products & Plans**  
+   (direct link: https://developer.paypal.com/dashboard/applications/sandbox/subscriptions/products)
+2. Click **Create Product**.
+3. Fill in:
+   - **Product name**: `Celestial Eye Full Access`
+   - **Product type**: `Service`
+   - **Category**: `Digital services`
+   - **Description**: `Full cosmic access including birth chart, daily cosmic guide, and unlimited Nexus AI chat`
+4. Click **Create Product**.
+
+#### 4b — Create a Billing Plan
+
+1. Open the product you just created and click **Create Plan**.
+2. Fill in:
+   - **Plan name**: `Monthly Full Access`
+   - **Description**: `Monthly subscription for full cosmic access`
+3. Set the billing cycle:
+   - **Pricing model**: `Fixed pricing`
+   - **Price**: `3.99` (or your preferred price)
+   - **Currency**: `USD`
+   - **Billing cycle**: `Monthly`
+4. Click **Create Plan**.
+5. Copy the **Plan ID** — it starts with `P-` (e.g. `P-1AB23456CD789012EF345678`). You'll need it in Step 5.
+
+---
+
+### Step 5 — Configure your environment variables
+
+Copy the example file and fill in your values:
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` in a text editor and paste in the values from Steps 3 and 4:
+
+```dotenv
+PAYPAL_CLIENT_ID=<paste Client ID from Step 3>
+PAYPAL_CLIENT_SECRET=<paste Secret from Step 3>
+PAYPAL_MODE=sandbox
+PAYPAL_SUBSCRIPTION_PLAN_ID=<paste Plan ID from Step 4, or leave as-is to skip subscriptions>
+PORT=3000
+```
+
+---
+
+### Step 6 — Start the server
+
+```bash
+npm start
+```
+
+You should see:
+
+```
+Celestial Eye server running on port 3000
+```
+
+If any credentials are missing the server will print a warning telling you exactly which variables are not set.
+
+Open **http://localhost:3000** in your browser to see the landing page.
+
+---
+
+### Step 7 — Verify your PayPal configuration
+
+Visit the config endpoint to confirm the server picked up your credentials:
+
+```
+http://localhost:3000/api/paypal/config
+```
+
+It returns:
+
+```json
+{ "clientId": "...", "subscriptionPlanId": "...", "mode": "sandbox" }
+```
+
+The Secret is never exposed here. If `clientId` is empty or still shows `your_paypal_client_id_here`, go back and check your `.env` file.
+
+---
+
+### Step 8 — Test payments with sandbox accounts
+
+PayPal provides free test accounts so you can simulate purchases without real money:
+
+1. In the Developer Dashboard, go to **Sandbox → Accounts**.
+2. You'll see two pre-created accounts:
+   - **Personal** (buyer) — use these credentials to log in and complete test purchases.
+   - **Business** (seller) — receives the test payments.
+3. On your local site, click a payment button, log in with the **Personal** sandbox account, and complete the flow.
+4. A successful one-time payment redirects to `/success.html?type=chart`.
+5. A successful subscription redirects to `/success.html?type=subscription`.
+
+> 💡 You can also use test credit cards — see [PayPal sandbox card numbers](https://developer.paypal.com/api/rest/sandbox/card-testing/).
+
+---
+
+### Step 9 — Go live (accept real payments)
+
+Only do this after testing thoroughly in sandbox.
+
+1. In the Developer Dashboard, flip the toggle to **Live** mode.
+2. Open (or create) your app in Live mode and copy the **Live Client ID** and **Live Secret**.
+3. In the Live dashboard, create a new Product and Plan under **Subscriptions → Products & Plans** (same steps as Step 4).
+4. Update your environment variables (on Render or in `.env`):
+
+```dotenv
+PAYPAL_CLIENT_ID=<live client id>
+PAYPAL_CLIENT_SECRET=<live secret>
+PAYPAL_SUBSCRIPTION_PLAN_ID=<live plan id>
+PAYPAL_MODE=live
+```
+
+5. Restart the server (or redeploy).
+
+> ⚠️ Live mode processes real money. Double-check every value before restarting.
+
+---
+
+### Step 10 — Deploy to Render (optional)
+
+1. Push this repository to GitHub.
+2. Log in to [render.com](https://render.com) and create a **New Web Service**.
+3. Connect your GitHub repository — Render will auto-detect `render.yaml`.
+4. In the Render dashboard → **Environment** tab, add the four variables:
+   - `PAYPAL_CLIENT_ID`
+   - `PAYPAL_CLIENT_SECRET`
+   - `PAYPAL_SUBSCRIPTION_PLAN_ID`
+   - `PAYPAL_MODE` = `live`
+5. Click **Deploy**.
+
+Your site will be live at `https://celestial-eye-landing.onrender.com` (or your custom domain).
 
 ---
 
@@ -27,146 +214,6 @@ A beautiful, celestial-themed landing page for the **Celestial Eye** service. Vi
 | Payments | PayPal REST API + JS SDK |
 | Hosting | Render (render.yaml included) |
 | Frontend | Vanilla HTML/CSS/JS (no framework) |
-
----
-
-## Local Development
-
-### 1. Install dependencies
-
-```bash
-npm install
-```
-
-### 2. Configure environment variables
-
-```bash
-cp .env.example .env
-# Edit .env and fill in your PayPal credentials
-```
-
-### 3. Get PayPal credentials
-
-#### Step 1: Create a PayPal Developer Account
-
-1. Go to [developer.paypal.com](https://developer.paypal.com)
-2. Click **Log in to Dashboard** (or sign up if you don't have an account)
-3. Use your existing PayPal account or create a new one
-
-#### Step 2: Create an App to Get API Credentials
-
-1. In the PayPal Developer Dashboard, go to **Apps & Credentials**
-2. Make sure you're in **Sandbox** mode (toggle at the top) for testing
-3. Click **Create App**
-4. Enter an app name (e.g., "Celestial Eye")
-5. Select **Merchant** as the app type
-6. Click **Create App**
-7. On the app details page, you'll see:
-   - **Client ID** – Copy this to `PAYPAL_CLIENT_ID` in your `.env` file
-   - **Secret** – Click "Show" to reveal, then copy to `PAYPAL_CLIENT_SECRET` in your `.env` file
-8. Set `PAYPAL_MODE=sandbox` in your `.env` file for testing
-
-> **⚠️ Important:** Never commit your `.env` file or share your Secret publicly!
-
-### 4. Create a monthly subscription plan (for Full Access)
-
-#### Step 1: Create a Product
-
-1. In the PayPal Developer Dashboard, go to **Sandbox** → **Subscriptions** → **Products & Plans**
-   - Or visit: https://developer.paypal.com/dashboard/applications/sandbox/subscriptions/products
-2. Click **Create Product**
-3. Fill in the details:
-   - **Product name**: "Celestial Eye Full Access"
-   - **Product type**: Service
-   - **Category**: Digital services (or appropriate category)
-   - **Description**: "Full cosmic access including birth chart, daily cosmic guide, and unlimited Nexus AI chat"
-4. Click **Create Product**
-
-#### Step 2: Create a Billing Plan
-
-1. After creating the product, click on it to open its details
-2. Click **Create Plan**
-3. Fill in the plan details:
-   - **Plan name**: "Monthly Full Access"
-   - **Description**: "Monthly subscription for full cosmic access"
-4. Set the billing cycle:
-   - **Pricing model**: Fixed pricing
-   - **Price**: Enter your price (e.g., `9.99`)
-   - **Currency**: USD
-   - **Billing cycle**: Monthly
-5. Click **Create Plan**
-6. Copy the **Plan ID** (starts with `P-`) → set `PAYPAL_SUBSCRIPTION_PLAN_ID=P-XXXXXXXX` in your `.env` file
-
-> **💡 Tip:** You can also create plans programmatically via the PayPal API if needed.
-
-### 5. Start the server
-
-```bash
-npm start
-# → http://localhost:3000
-```
-
-### 6. Test with Sandbox Accounts
-
-PayPal provides test accounts to simulate payments without using real money:
-
-1. In the PayPal Developer Dashboard, go to **Sandbox** → **Accounts**
-2. You'll see two default test accounts:
-   - **Personal** (buyer) – Use this email/password to test making purchases
-   - **Business** (seller) – This receives the test payments
-3. Open your local site at `http://localhost:3000`
-4. Click on a PayPal payment button
-5. Log in with the **Personal** sandbox account credentials
-6. Complete the test payment
-
-> **💡 Sandbox Test Card:** You can also use test credit cards in sandbox mode. See [PayPal's test card numbers](https://developer.paypal.com/api/rest/sandbox/card-testing/).
-
----
-
-## Going Live (Production)
-
-When you're ready to accept real payments:
-
-### Step 1: Get Live API Credentials
-
-1. In the PayPal Developer Dashboard, switch to **Live** mode (toggle at the top)
-2. Create a new app or view your existing app in Live mode
-3. Copy the **Live Client ID** and **Live Secret**
-
-### Step 2: Create a Live Subscription Plan
-
-1. In the PayPal Developer Dashboard under **Live** mode, go to **Subscriptions** → **Products & Plans**
-2. Create your product and plan again (same steps as sandbox, but for production)
-3. Copy the new **Live Plan ID**
-
-### Step 3: Update Environment Variables
-
-Update your `.env` file (or hosting environment variables):
-
-```bash
-PAYPAL_CLIENT_ID=your_live_client_id
-PAYPAL_CLIENT_SECRET=your_live_client_secret
-PAYPAL_SUBSCRIPTION_PLAN_ID=your_live_plan_id
-PAYPAL_MODE=live
-```
-
-> **⚠️ Important:** Live mode processes real payments. Test thoroughly in sandbox first!
-
----
-
-## Deploying to Render
-
-1. Push this repository to GitHub
-2. Log in to [render.com](https://render.com) and create a **New Web Service**
-3. Connect your GitHub repository — Render will auto-detect `render.yaml`
-4. In the Render dashboard → **Environment** tab, add:
-   - `PAYPAL_CLIENT_ID`
-   - `PAYPAL_CLIENT_SECRET`
-   - `PAYPAL_SUBSCRIPTION_PLAN_ID`
-   - `PAYPAL_MODE` = `live`
-5. Click **Deploy**
-
-Your site will be live at `https://celestial-eye-landing.onrender.com` (or your custom domain).
 
 ---
 
