@@ -109,7 +109,7 @@ function recordWebhookEvent(eventId, eventType, summary) {
     eventType,
     summary: summary || {},
   });
-  // Bound memory usage to the most recent 1 000 events
+  // Bound memory usage to the most recent 1000 events
   if (webhookEventLog.size > 1000) {
     const oldestKey = webhookEventLog.keys().next().value;
     webhookEventLog.delete(oldestKey);
@@ -162,7 +162,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ---------------------------------------------------------------------------
 
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 15 * 60 * 1000, // 15 minutes
   max: 50,
   standardHeaders: true,
   legacyHeaders: false,
@@ -170,10 +170,20 @@ const apiLimiter = rateLimit({
 });
 
 const pageLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000,
+  windowMs: 10 * 60 * 1000, // 10 minutes
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
+});
+
+// Separate limiter for the webhook endpoint – generous limit since PayPal
+// can send bursts, but still protects against abuse/flooding.
+const webhookLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please try again later.' },
 });
 
 // ---------------------------------------------------------------------------
@@ -199,6 +209,9 @@ async function getPayPalAccessToken() {
 function makeCorrelationId() {
   return crypto.randomBytes(6).toString('hex').toUpperCase();
 }
+
+// PayPal order IDs are exactly 17 uppercase alphanumeric characters
+const PAYPAL_ORDER_ID_PATTERN = /^[A-Z0-9]{17}$/;
 
 // ---------------------------------------------------------------------------
 // API: provide PayPal config to the client
@@ -275,7 +288,7 @@ app.post('/api/paypal/capture-order/:orderID', apiLimiter, async (req, res) => {
   const correlationId = makeCorrelationId();
 
   // Validate orderID format before hitting PayPal
-  if (!/^[A-Z0-9]{17}$/.test(orderID)) {
+  if (!PAYPAL_ORDER_ID_PATTERN.test(orderID)) {
     log('warn', 'capture-order:invalid-id', { correlationId, orderID });
     return res.status(400).json({ error: 'Invalid order ID', correlationId });
   }
@@ -366,6 +379,7 @@ async function verifyWebhookSignature(req, rawBody) {
 // Webhook endpoint uses raw body parser so we can pass the unmodified bytes to the verification API
 app.post(
   '/api/paypal/webhook',
+  webhookLimiter,
   express.raw({ type: 'application/json', limit: '1mb' }),
   async (req, res) => {
     const correlationId = makeCorrelationId();

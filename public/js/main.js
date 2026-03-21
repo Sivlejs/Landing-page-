@@ -112,6 +112,8 @@ function clearStatus(container) {
 
 // ── Load PayPal SDK and render buttons ─────────────────────
 
+const ELLIPSIS = '\u2026';
+
 /**
  * Load the PayPal JS SDK exactly once, returning a promise that resolves
  * when window.paypal is ready.
@@ -149,13 +151,13 @@ function ensurePayPalSdk(clientId) {
 async function loadPayPal() {
   try {
     // Show "Connecting to PayPal…" in both containers while we fetch config
-    setStatus(ppChartContainer, 'loading', 'Connecting to PayPal\u2026');
-    setStatus(ppSubContainer, 'loading', 'Connecting to PayPal\u2026');
+    setStatus(ppChartContainer, 'loading', 'Connecting to PayPal' + ELLIPSIS);
+    setStatus(ppSubContainer, 'loading', 'Connecting to PayPal' + ELLIPSIS);
 
     const res = await fetch('/api/paypal/config');
     if (!res.ok) throw new Error('Config unavailable');
     const config = await res.json();
-    const { clientId, subscriptionPlanId, mode } = config;
+    const { clientId, subscriptionPlanId } = config;
 
     if (!clientId || clientId === 'your_paypal_client_id_here') {
       showConfigError();
@@ -168,7 +170,7 @@ async function loadPayPal() {
     clearStatus(ppChartContainer);
     clearStatus(ppSubContainer);
 
-    renderPaymentButtons(subscriptionPlanId, mode);
+    renderPaymentButtons(subscriptionPlanId);
 
   } catch (err) {
     console.warn('PayPal load failed:', err.message);
@@ -202,7 +204,7 @@ function renderPaymentButtons(subscriptionPlanId) {
       },
 
       createOrder: async () => {
-        setStatus(ppChartContainer, 'loading', 'Processing\u2026');
+        setStatus(ppChartContainer, 'loading', 'Processing' + ELLIPSIS);
         try {
           const r = await fetch('/api/paypal/create-order', { method: 'POST' });
           const data = await r.json();
@@ -219,7 +221,7 @@ function renderPaymentButtons(subscriptionPlanId) {
       },
 
       onApprove: async (data) => {
-        setStatus(ppChartContainer, 'loading', 'Completing payment\u2026');
+        setStatus(ppChartContainer, 'loading', 'Completing payment' + ELLIPSIS);
         try {
           const r = await fetch(`/api/paypal/capture-order/${data.orderID}`, { method: 'POST' });
           const result = await r.json();
@@ -259,12 +261,12 @@ function renderPaymentButtons(subscriptionPlanId) {
       },
 
       createSubscription: (_data, actions) => {
-        setStatus(ppSubContainer, 'loading', 'Setting up subscription\u2026');
+        setStatus(ppSubContainer, 'loading', 'Setting up subscription' + ELLIPSIS);
         return actions.subscription.create({ plan_id: subscriptionPlanId });
       },
 
       onApprove: (data) => {
-        setStatus(ppSubContainer, 'loading', 'Activating your subscription\u2026');
+        setStatus(ppSubContainer, 'loading', 'Activating your subscription' + ELLIPSIS);
         console.log('Subscription approved, ID:', data.subscriptionID);
         window.location.href = '/success.html?type=subscription';
       },
