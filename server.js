@@ -14,9 +14,29 @@ const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID || '';
 const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET || '';
 const PAYPAL_SUBSCRIPTION_PLAN_ID = process.env.PAYPAL_SUBSCRIPTION_PLAN_ID || '';
 
-if (PAYPAL_MODE === 'live' && (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET)) {
-  console.error('FATAL: PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET must be set in live mode.');
-  process.exit(1);
+// Validate required credentials and log setup status
+const missingCredentials = [];
+if (!PAYPAL_CLIENT_ID || PAYPAL_CLIENT_ID === 'your_paypal_client_id_here') {
+  missingCredentials.push('PAYPAL_CLIENT_ID');
+}
+if (!PAYPAL_CLIENT_SECRET || PAYPAL_CLIENT_SECRET === 'your_paypal_client_secret_here') {
+  missingCredentials.push('PAYPAL_CLIENT_SECRET');
+}
+
+if (missingCredentials.length > 0) {
+  if (PAYPAL_MODE === 'live') {
+    console.error('FATAL: Missing required environment variables for live mode:', missingCredentials.join(', '));
+    console.error('Set these in your .env file (see .env.example) or in your hosting platform environment settings.');
+    process.exit(1);
+  } else {
+    console.warn('⚠️  PayPal setup incomplete. Missing:', missingCredentials.join(', '));
+    console.warn('   Copy .env.example to .env and fill in your PayPal credentials.');
+    console.warn('   The server will start but payment buttons will show a configuration message.');
+  }
+}
+
+if (!PAYPAL_SUBSCRIPTION_PLAN_ID || PAYPAL_SUBSCRIPTION_PLAN_ID === 'your_subscription_plan_id_here') {
+  console.warn('⚠️  PAYPAL_SUBSCRIPTION_PLAN_ID not set. Subscription payments will be unavailable.');
 }
 
 const PAYPAL_BASE =

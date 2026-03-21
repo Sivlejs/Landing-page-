@@ -1,5 +1,29 @@
 # Celestial Eye – Landing Page
 
+## ⚡ Quick Setup – What You Need
+
+To make the landing page fully functional you need **three values** from PayPal:
+
+| # | Variable | Where to find it | Required? |
+|---|----------|-----------------|-----------|
+| 1 | `PAYPAL_CLIENT_ID` | [developer.paypal.com](https://developer.paypal.com/dashboard/applications) → your app → **Client ID** | ✅ Yes |
+| 2 | `PAYPAL_CLIENT_SECRET` | Same page → click **Show** next to Secret | ✅ Yes |
+| 3 | `PAYPAL_SUBSCRIPTION_PLAN_ID` | Developer Dashboard → Subscriptions → Plans → **Plan ID** (starts with `P-`) | Optional (enables monthly subscription) |
+
+> **A single key is not enough.** The Client ID identifies your app to the browser; the Client Secret lets the server create and capture orders. Both are required for payments to work.
+
+**Fastest path to a working setup:**
+
+```bash
+cp .env.example .env
+# Open .env and paste your three values, then:
+npm install
+npm start
+# → http://localhost:3000
+```
+
+---
+
 A beautiful, celestial-themed landing page for the **Celestial Eye** service. Visitors can:
 
 - **Get a Birth Chart reading** for a one-time payment of **$1.99** via PayPal, then enter their birth details to generate their natal chart instantly.
