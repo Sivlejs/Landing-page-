@@ -253,6 +253,7 @@ For production, set up a PayPal webhook to handle subscription events (cancellat
 | PayPal buttons don't appear | Check browser console for errors; verify `PAYPAL_CLIENT_ID` is correct |
 | "Failed to create order" | Verify your API credentials are valid and not expired |
 | Subscription button not working | Ensure `PAYPAL_SUBSCRIPTION_PLAN_ID` is set to a valid plan ID |
+| One-time payment and subscription buttons conflict | Previously caused by loading the SDK twice. Both flows are now supported by a **single** SDK load (`vault=true&intent=capture`). If you see SDK errors on an old deployment, hard-refresh the page to clear any cached scripts. |
 | Can't log into sandbox | Use sandbox account credentials from the Developer Dashboard, not your real PayPal account |
 
 ### Checking Your Configuration

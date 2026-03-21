@@ -95,10 +95,10 @@ async function loadPayPal() {
       return;
     }
 
-    // Load PayPal JS SDK
-    await loadScript(`https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&intent=capture`);
+    // Load PayPal JS SDK once — vault=true enables subscriptions; intent=capture supports one-time orders
+    await loadScript(`https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&intent=capture&vault=true`);
 
-    renderPaymentButtons(subscriptionPlanId, clientId);
+    renderPaymentButtons(subscriptionPlanId);
 
   } catch (err) {
     console.warn('PayPal load failed:', err.message);
@@ -124,7 +124,7 @@ function showConfigError() {
   });
 }
 
-function renderPaymentButtons(subscriptionPlanId, clientId) {
+function renderPaymentButtons(subscriptionPlanId) {
   const loadingChart = document.getElementById('paypal-loading-chart');
   if (loadingChart) loadingChart.remove();
   const loadingSub = document.getElementById('paypal-loading-sub');
@@ -150,39 +150,39 @@ function renderPaymentButtons(subscriptionPlanId, clientId) {
         window.location.href = '/success.html?type=chart';
       },
       onError: (err) => {
-        console.error('PayPal error:', err);
+        console.error('PayPal one-time payment error:', err);
         alert('Payment failed. Please try again or contact support.');
       },
-    }).render('#paypal-button-container');
+    }).render('#paypal-button-container').catch(err => {
+      console.error('Failed to render one-time payment button:', err);
+    });
   }
 
   // ── Monthly subscription button ──
   if (loadingSub) loadingSub.remove();
 
   if (subscriptionPlanId && subscriptionPlanId !== 'your_subscription_plan_id_here' && window.paypal && ppSubContainer) {
-    // Load subscription-capable SDK separately
-    const subScriptSrc = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&vault=true&intent=subscription`;
-    loadScript(subScriptSrc).then(() => {
-      if (!window.paypal) return;
-      window.paypal.Buttons({
-        style: {
-          layout: 'vertical',
-          color: 'gold',
-          shape: 'rect',
-          label: 'subscribe',
-        },
-        createSubscription: (_data, actions) => {
-          return actions.subscription.create({ plan_id: subscriptionPlanId });
-        },
-        onApprove: () => {
-          window.location.href = '/success.html?type=subscription';
-        },
-        onError: (err) => {
-          console.error('Subscription error:', err);
-          alert('Subscription setup failed. Please try again.');
-        },
-      }).render('#paypal-subscription-container');
-    }).catch(console.warn);
+    // SDK already loaded above — render subscription button directly
+    window.paypal.Buttons({
+      style: {
+        layout: 'vertical',
+        color: 'gold',
+        shape: 'rect',
+        label: 'subscribe',
+      },
+      createSubscription: (_data, actions) => {
+        return actions.subscription.create({ plan_id: subscriptionPlanId });
+      },
+      onApprove: () => {
+        window.location.href = '/success.html?type=subscription';
+      },
+      onError: (err) => {
+        console.error('PayPal subscription error:', err);
+        alert('Subscription setup failed. Please try again.');
+      },
+    }).render('#paypal-subscription-container').catch(err => {
+      console.error('Failed to render subscription button:', err);
+    });
   } else if (ppSubContainer) {
     // Show a contact/waitlist message if no plan ID configured yet
     ppSubContainer.innerHTML = `
