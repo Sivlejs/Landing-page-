@@ -8,6 +8,11 @@ const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 
 const app = express();
+// Trust the first proxy hop (e.g. Render, Heroku, nginx) so that
+// req.protocol returns 'https' when the connection is TLS-terminated
+// upstream.  Without this, return_url / cancel_url built with
+// req.protocol would be 'http://' which PayPal rejects in live mode.
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
 const PAYPAL_MODE = process.env.PAYPAL_MODE || 'sandbox';
