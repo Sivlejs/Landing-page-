@@ -10,10 +10,12 @@ services:
       - key: NODE_ENV
         value: production
       - key: PAYPAL_MODE
-        value: sandbox
+        sync: false
       - key: PAYPAL_CLIENT_ID
         sync: false
       - key: PAYPAL_CLIENT_SECRET
         sync: false
       - key: PAYPAL_SUBSCRIPTION_PLAN_ID
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID
         sync: false
