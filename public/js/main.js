@@ -126,7 +126,7 @@ function ensurePayPalSdk(clientId) {
     // If already loaded (e.g. hard-refresh with cached script)
     if (window.paypal) { resolve(); return; }
 
-    const src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&intent=capture&vault=true`;
+    const src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&vault=true&enable-funding=card`;
 
     // Guard against a pre-existing script tag with a different URL
     const existing = document.querySelector('script[src^="https://www.paypal.com/sdk/js"]');

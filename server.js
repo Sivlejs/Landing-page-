@@ -91,6 +91,12 @@ if (!PAYPAL_WEBHOOK_ID) {
 
 log('info', 'startup:ok', { port: PORT, mode: PAYPAL_MODE });
 
+// Trust the first reverse-proxy hop (Render, Heroku, nginx, etc.) so that
+// req.protocol correctly reflects 'https' for live PayPal HTTPS URL requirements.
+// Value 1 = trust exactly one proxy, which matches Render's single-hop architecture.
+// If your hosting platform adds more proxy hops, increase this number accordingly.
+app.set('trust proxy', 1);
+
 const PAYPAL_BASE =
   PAYPAL_MODE === 'live'
     ? 'https://api-m.paypal.com'
@@ -272,6 +278,8 @@ app.post('/api/paypal/create-order', apiLimiter, async (req, res) => {
       correlationId,
       status: err.response?.status,
       paypalError: err.response?.data?.name,
+      paypalMessage: err.response?.data?.message,
+      paypalDetails: err.response?.data?.details,
       message: err.message,
     });
     res.status(500).json({ error: 'Failed to create order', correlationId });
@@ -328,6 +336,8 @@ app.post('/api/paypal/capture-order/:orderID', apiLimiter, async (req, res) => {
       orderID,
       status: err.response?.status,
       paypalError: err.response?.data?.name,
+      paypalMessage: err.response?.data?.message,
+      paypalDetails: err.response?.data?.details,
       message: err.message,
     });
     res.status(500).json({ error: 'Failed to capture order', correlationId });
