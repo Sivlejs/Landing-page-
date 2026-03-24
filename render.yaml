@@ -19,3 +19,5 @@ services:
         sync: false
       - key: PAYPAL_WEBHOOK_ID
         sync: false
+      - key: FRONTEND_URL
+        sync: false

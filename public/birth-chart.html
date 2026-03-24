@@ -6,6 +6,74 @@
   <title>Your Birth Chart – Celestial Eye</title>
   <meta name="description" content="Enter your birth details to receive your personalised natal chart reading from Celestial Eye." />
   <link rel="stylesheet" href="/css/styles.css" />
+  <style>
+    /* ── Birth chart result enhancements ─── */
+    .big-three { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .big-three-card {
+      background: rgba(10,7,32,0.7);
+      border: 1px solid var(--border-glow);
+      border-radius: 12px;
+      padding: 1.2rem 1rem;
+      text-align: center;
+    }
+    .big-three-card.sun-card  { border-color: rgba(245,158,11,0.5); }
+    .big-three-card.moon-card { border-color: rgba(148,163,184,0.4); }
+    .big-three-card.rise-card { border-color: rgba(168,85,247,0.5); }
+    .big-three-card .bt-icon  { font-size: 2rem; margin-bottom: 0.4rem; display: block; }
+    .big-three-card .bt-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--dim-text); margin-bottom: 0.2rem; }
+    .big-three-card .bt-sign  { font-family: 'Cinzel', serif; font-size: 1.05rem; color: var(--star-white); margin-bottom: 0.4rem; }
+    .big-three-card .bt-desc  { font-size: 0.78rem; color: var(--dim-text); line-height: 1.55; }
+    .cosmic-profile {
+      background: rgba(107,33,168,0.12);
+      border: 1px solid rgba(168,85,247,0.3);
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.88rem;
+      color: var(--moon-silver);
+      line-height: 1.75;
+    }
+    .cosmic-profile .profile-title {
+      font-family: 'Cinzel', serif;
+      color: var(--glow-gold);
+      font-size: 0.9rem;
+      margin-bottom: 0.6rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .result-table td.interp { color: var(--dim-text); font-size: 0.78rem; font-style: italic; max-width: 200px; }
+    .house-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.6rem; margin-top: 0.8rem; }
+    .house-item { display: flex; gap: 0.6rem; align-items: flex-start; font-size: 0.82rem; }
+    .house-num  { min-width: 24px; height: 24px; border-radius: 50%; background: rgba(168,85,247,0.2); border: 1px solid rgba(168,85,247,0.4); display: flex; align-items: center; justify-content: center; font-family: 'Cinzel', serif; font-size: 0.7rem; color: var(--stardust); flex-shrink: 0; }
+    .house-text .h-sign { color: var(--star-white); font-weight: 600; }
+    .house-text .h-meaning { color: var(--dim-text); }
+    .aspects-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-top: 0.8rem; }
+    .aspects-table th { padding: 0.4rem 0.6rem; color: var(--stardust); font-weight: 600; text-align: left; border-bottom: 1px solid rgba(168,85,247,0.2); }
+    .aspects-table td { padding: 0.45rem 0.6rem; border-bottom: 1px solid rgba(168,85,247,0.08); color: var(--moon-silver); }
+    .aspect-symbol { font-size: 1rem; margin-right: 0.2rem; }
+    .result-section-title {
+      color: var(--glow-gold);
+      font-family: 'Cinzel', serif;
+      font-size: 0.9rem;
+      margin: 1.6rem 0 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .locked-row td { color: rgba(148,163,184,0.35); font-style: italic; }
+    .locked-row .lock-icon { color: rgba(168,85,247,0.4); }
+    .unlock-hint {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--dim-text);
+      margin-top: 0.5rem;
+      padding: 0.5rem;
+      background: rgba(107,33,168,0.08);
+      border-radius: 8px;
+      border: 1px dashed rgba(168,85,247,0.2);
+    }
+  </style>
 </head>
 <body>
 
@@ -25,7 +93,7 @@
     </a>
   </nav>
 
-  <div class="birth-chart-container">
+  <div class="birth-chart-container" style="max-width:820px;">
 
     <div style="text-align:center;margin-bottom:2rem;">
       <div style="font-size:3.5rem;margin-bottom:0.5rem;">🌠</div>
@@ -94,23 +162,58 @@
 
         <div id="chart-summary"></div>
 
+        <!-- Big Three -->
+        <p class="result-section-title">✨ The Big Three</p>
+        <div class="big-three" id="big-three"></div>
+
+        <!-- Cosmic Profile -->
+        <div class="cosmic-profile" id="cosmic-profile" style="display:none;">
+          <div class="profile-title">🔮 Your Cosmic Profile</div>
+          <div id="profile-text"></div>
+        </div>
+
+        <!-- Planetary Positions -->
+        <p class="result-section-title">🪐 Planetary Positions</p>
         <table class="result-table" id="planets-table" aria-label="Planetary positions">
           <thead>
             <tr>
               <th>Planet</th>
               <th>Sign</th>
               <th>House</th>
-              <th>Degree</th>
+              <th>°</th>
+              <th>Influence</th>
             </tr>
           </thead>
           <tbody id="planets-tbody"></tbody>
         </table>
+        <div id="unlock-hint"></div>
+
+        <!-- House Overview -->
+        <p class="result-section-title">🏠 House Placements</p>
+        <div class="house-grid" id="house-grid"></div>
+
+        <!-- Key Aspects -->
+        <div id="aspects-section">
+          <p class="result-section-title">⚡ Key Aspects</p>
+          <table class="aspects-table" id="aspects-table" aria-label="Planetary aspects">
+            <thead>
+              <tr>
+                <th>Aspect</th>
+                <th>Planets</th>
+                <th>Orb</th>
+                <th>Meaning</th>
+              </tr>
+            </thead>
+            <tbody id="aspects-tbody"></tbody>
+          </table>
+          <p id="aspects-empty" style="display:none;color:var(--dim-text);font-size:0.82rem;text-align:center;margin-top:0.5rem;">No major aspects found in the visible planets.</p>
+        </div>
 
         <div class="separator">Rising Sign &amp; Luminaries</div>
         <div id="luminaries-summary"></div>
 
         <div class="mt-3 text-center" id="chart-bottom-cta">
-          <a href="/" class="btn btn-primary" style="width:auto;display:inline-flex;padding:0.7rem 1.8rem;font-size:0.9rem;">
+          <a href="/#pricing" class="btn btn-primary" style="width:auto;display:inline-flex;padding:0.7rem 1.8rem;font-size:0.9rem;">
             🔮 &nbsp; Unlock Daily Guidance
           </a>
           <p style="color:var(--dim-text);font-size:0.8rem;margin-top:0.6rem;">
@@ -138,11 +241,6 @@
   document.getElementById('footer-year').textContent = new Date().getFullYear();
 
   // ── Access check ─────────────────────────────────────────────────────────
-  // After a successful one-time payment, main.js stores the captured PayPal
-  // order ID in localStorage under "chartAccessToken".  After a subscription
-  // payment, the subscription ID is stored under "subscriptionID".
-  // We verify both tokens server-side so entitlements cannot be spoofed.
-
   let _hasPaidAccess = false;
 
   async function checkAccess() {
@@ -152,7 +250,6 @@
       subscriptionID = localStorage.getItem('subscriptionID');
     } catch (_) { return; }
 
-    // Check one-time order access first
     if (token) {
       try {
         const res = await fetch('/api/verify-access?orderID=' + encodeURIComponent(token));
@@ -160,12 +257,9 @@
           const data = await res.json();
           if (data.hasAccess) { _hasPaidAccess = true; return; }
         }
-      } catch (_) {
-        // Network error – continue to subscription check.
-      }
+      } catch (_) {}
     }
 
-    // Check active subscription access (reload / page-refresh support)
     if (subscriptionID) {
       try {
         const res = await fetch('/api/paypal/check-subscription?subscriptionID=' + encodeURIComponent(subscriptionID));
@@ -173,21 +267,254 @@
           const data = await res.json();
           if (data.active) { _hasPaidAccess = true; return; }
         }
-      } catch (_) {
-        // Network error – leave _hasPaidAccess as false; user can retry.
-      }
+      } catch (_) {}
     }
   }
 
-  // Begin the access check immediately (non-blocking).
   const accessCheckPromise = checkAccess();
 
-  // Zodiac calculation helpers
-  const ZODIAC = [
-    'Aries','Taurus','Gemini','Cancer','Leo','Virgo',
-    'Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'
-  ];
+  // ── Astrological data ─────────────────────────────────────────────────────
+
+  const ZODIAC = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
   const ZODIAC_GLYPHS = ['♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓'];
+  const ZODIAC_ELEMENTS = ['Fire','Earth','Air','Water','Fire','Earth','Air','Water','Fire','Earth','Air','Water'];
+  const ZODIAC_MODALITIES = ['Cardinal','Fixed','Mutable','Cardinal','Fixed','Mutable','Cardinal','Fixed','Mutable','Cardinal','Fixed','Mutable'];
+
+  // Brief one-line interpretation for each planet in each sign (index = sign index 0–11)
+  const PLANET_SIGN_INTERP = {
+    'Sun': [
+      'Bold, pioneering drive; you act first and ask questions later.',
+      'Steadfast and sensual; you build lasting value through patient effort.',
+      'Curious and versatile; you thrive on ideas and lively conversation.',
+      'Deeply intuitive and nurturing; home and family anchor your identity.',
+      'Radiant and generous; you shine brightest when leading and creating.',
+      'Precise and analytical; excellence and service define your purpose.',
+      'Harmonious and fair-minded; you seek balance in all relationships.',
+      'Intensely perceptive; you transform every situation you enter.',
+      'Adventurous and philosophical; truth and freedom drive your journey.',
+      'Disciplined and ambitious; you build empires through focused effort.',
+      'Original and humanitarian; you champion progressive ideals.',
+      'Empathic and imaginative; you dissolve boundaries and feel everything.'
+    ],
+    'Moon': [
+      'Emotionally impulsive; feelings arrive fast and burn bright.',
+      'Seeks comfort and security; you soothe yourself through the senses.',
+      'Emotionally restless; you process feelings by talking them through.',
+      'Deeply nurturing; home is your emotional sanctuary.',
+      'Craves recognition and warmth; you flourish when appreciated.',
+      'Emotionally reserved; you feel safe when everything is in order.',
+      'Needs harmony and partnership; conflict unsettles your peace.',
+      'Feels deeply and privately; emotions run still but very deep.',
+      'Upbeat and restless; you need freedom to feel emotionally alive.',
+      'Cautious with emotions; you protect your heart through achievement.',
+      'Detached yet caring; you feel most alive when helping the collective.',
+      'Boundlessly empathic; you absorb the moods of everyone around you.'
+    ],
+    // Rising sign: describes how others first perceive you
+    'Rising': [
+      'You come across as bold, energetic, and direct — a force of nature.',
+      'You project calm stability and quiet confidence; others trust you instantly.',
+      'You appear curious, witty, and sociable — people are drawn to your mind.',
+      'You radiate warmth and sensitivity; others see you as caring and approachable.',
+      'You project confidence and charisma; people notice you the moment you enter.',
+      'You come across as composed, thoughtful, and quietly capable.',
+      'You project elegance and diplomacy; people find you charming and gracious.',
+      'You carry an air of depth and mystery that intrigues everyone you meet.',
+      'You project enthusiasm and openness; people experience you as inspiring.',
+      'You appear composed, capable, and quietly authoritative; others respect you.',
+      'You project originality and independence; people find you fascinating.',
+      'You carry a gentle, ethereal quality; people sense your empathy immediately.'
+    ],
+    'Mercury': [
+      'Quick, direct communicator; words come fast and with conviction.',
+      'Deliberate thinker; you consider every angle before speaking.',
+      'Master of language; you can discuss anything with agility.',
+      'Intuitive thinker; you absorb information through feeling.',
+      'Expressive storyteller; you communicate with drama and flair.',
+      'Meticulous analyst; you notice every detail others overlook.',
+      'Diplomatic negotiator; you see all sides of every argument.',
+      'Penetrating investigator; you probe beneath the surface.',
+      'Philosophical broad-thinker; you love ideas that expand horizons.',
+      'Structured strategist; you plan and communicate with precision.',
+      'Inventive lateral thinker; you connect ideas no one else would.',
+      'Intuitive and poetic; you communicate through imagery and feeling.'
+    ],
+    'Venus': [
+      'Loves the thrill of the chase; romance must be exciting.',
+      'Sensual and loyal; you show love through touch, gifts, and stability.',
+      'Flirtatious and playful; you fall in love with minds.',
+      'Loving and protective; you nurture those you care for deeply.',
+      'Romantic and theatrical; love must feel epic and grand.',
+      'Expresses love through acts of service and thoughtful detail.',
+      'Romantic idealist; you seek the perfect harmonious partnership.',
+      'Magnetic and intense; you love with your whole soul.',
+      'Values freedom in love; you need a partner who is also a companion.',
+      'Practical in love; commitment and shared ambition matter most.',
+      'Drawn to unconventional love; friendship underlies romance.',
+      'Deeply compassionate and self-sacrificing in love.'
+    ],
+    'Mars': [
+      'Unstoppable drive; you charge toward goals with fearless energy.',
+      'Slow to start but immovable once in motion; endurance is your gift.',
+      'Scattered energy that works in bursts; you achieve through versatility.',
+      'Driven by emotional needs; you fight fiercely for those you love.',
+      'Bold and passionate; you pursue goals with theatrical intensity.',
+      'Precise and methodical; you conquer through planning and craft.',
+      'Diplomatic fighter; you pursue goals through strategy, not force.',
+      'Relentless and strategic; you outlast every opponent.',
+      'Energetic and free-spirited; you pursue goals with optimism.',
+      'Ambitious and controlled; you channel energy into long-term plans.',
+      'Unconventional and unpredictable; you rebel against the expected.',
+      'Intuitive and empathic; you act on inner guidance more than logic.'
+    ],
+    'Jupiter': [
+      'Luck through bold action and new beginnings.',
+      'Expands wealth, beauty, and enduring foundations.',
+      'Grows through learning, travel, and communication.',
+      'Blessed in home, family, and emotional wisdom.',
+      'Abundant creativity, romance, and joyful self-expression.',
+      'Grows through service, health, and mastery of craft.',
+      'Expands through partnerships, justice, and diplomacy.',
+      'Deepens through transformation, depth, and shared resources.',
+      'Natural philosopher; luck follows honest adventure.',
+      'Ambition and structure bring remarkable achievements.',
+      'Innovation and community open unexpected doors.',
+      'Spirituality, compassion, and inner wisdom attract fortune.'
+    ],
+    'Saturn': [
+      'Lessons in patience, courage, and healthy self-assertion.',
+      'Builds discipline around finances, values, and material security.',
+      'Masters communication, learning, and mental discipline.',
+      'Karmic lessons around home, family, and emotional boundaries.',
+      'Teaches authentic self-expression and responsible leadership.',
+      'Mastery comes through precision, health, and service.',
+      'Lessons in relationship balance, commitment, and fairness.',
+      'Deep transformation through facing fears and hidden truths.',
+      'Wisdom earned through philosophy, travel, and honest belief.',
+      'Natural placement; ambition met with discipline and structure.',
+      'Breaks old structures; innovates through disciplined revolution.',
+      'Spiritual discipline; you master the art of letting go.'
+    ]
+  };
+      'Quick, direct communicator; words come fast and with conviction.',
+      'Deliberate thinker; you consider every angle before speaking.',
+      'Master of language; you can discuss anything with agility.',
+      'Intuitive thinker; you absorb information through feeling.',
+      'Expressive storyteller; you communicate with drama and flair.',
+      'Meticulous analyst; you notice every detail others overlook.',
+      'Diplomatic negotiator; you see all sides of every argument.',
+      'Penetrating investigator; you probe beneath the surface.',
+      'Philosophical broad-thinker; you love ideas that expand horizons.',
+      'Structured strategist; you plan and communicate with precision.',
+      'Inventive lateral thinker; you connect ideas no one else would.',
+      'Intuitive and poetic; you communicate through imagery and feeling.'
+    ],
+    'Venus': [
+      'Loves the thrill of the chase; romance must be exciting.',
+      'Sensual and loyal; you show love through touch, gifts, and stability.',
+      'Flirtatious and playful; you fall in love with minds.',
+      'Loving and protective; you nurture those you care for deeply.',
+      'Romantic and theatrical; love must feel epic and grand.',
+      'Expresses love through acts of service and thoughtful detail.',
+      'Romantic idealist; you seek the perfect harmonious partnership.',
+      'Magnetic and intense; you love with your whole soul.',
+      'Values freedom in love; you need a partner who is also a companion.',
+      'Practical in love; commitment and shared ambition matter most.',
+      'Drawn to unconventional love; friendship underlies romance.',
+      'Deeply compassionate and self-sacrificing in love.'
+    ],
+    'Mars': [
+      'Unstoppable drive; you charge toward goals with fearless energy.',
+      'Slow to start but immovable once in motion; endurance is your gift.',
+      'Scattered energy that works in bursts; you achieve through versatility.',
+      'Driven by emotional needs; you fight fiercely for those you love.',
+      'Bold and passionate; you pursue goals with theatrical intensity.',
+      'Precise and methodical; you conquer through planning and craft.',
+      'Diplomatic fighter; you pursue goals through strategy, not force.',
+      'Relentless and strategic; you outlast every opponent.',
+      'Energetic and free-spirited; you pursue goals with optimism.',
+      'Ambitious and controlled; you channel energy into long-term plans.',
+      'Unconventional and unpredictable; you rebel against the expected.',
+      'Intuitive and empathic; you act on inner guidance more than logic.'
+    ],
+    'Jupiter': [
+      'Luck through bold action and new beginnings.',
+      'Expands wealth, beauty, and enduring foundations.',
+      'Grows through learning, travel, and communication.',
+      'Blessed in home, family, and emotional wisdom.',
+      'Abundant creativity, romance, and joyful self-expression.',
+      'Grows through service, health, and mastery of craft.',
+      'Expands through partnerships, justice, and diplomacy.',
+      'Deepens through transformation, depth, and shared resources.',
+      'Natural philosopher; luck follows honest adventure.',
+      'Ambition and structure bring remarkable achievements.',
+      'Innovation and community open unexpected doors.',
+      'Spirituality, compassion, and inner wisdom attract fortune.'
+    ],
+    'Saturn': [
+      'Lessons in patience, courage, and healthy self-assertion.',
+      'Builds discipline around finances, values, and material security.',
+      'Masters communication, learning, and mental discipline.',
+      'Karmic lessons around home, family, and emotional boundaries.',
+      'Teaches authentic self-expression and responsible leadership.',
+      'Mastery comes through precision, health, and service.',
+      'Lessons in relationship balance, commitment, and fairness.',
+      'Deep transformation through facing fears and hidden truths.',
+      'Wisdom earned through philosophy, travel, and honest belief.',
+      'Natural placement; ambition met with discipline and structure.',
+      'Breaks old structures; innovates through disciplined revolution.',
+      'Spiritual discipline; you master the art of letting go.'
+    ]
+  };
+
+  // Outer planet brief interpretations (paid tier)
+  const OUTER_PLANET_INTERP = {
+    'Uranus': [
+      'Radical innovation in identity.','Financial revolution.','Revolutionary communication.',
+      'Unconventional family life.','Creative rebellion.','Innovative service.',
+      'Disrupts relationships.','Transforms the hidden.','Unconventional beliefs.',
+      'Career reinvention.','Generational humanitarian change.','Dissolves spiritual boundaries.'
+    ],
+    'Neptune': [
+      'Idealistic self-image.','Spiritual values.','Imaginative communication.',
+      'Dissolves home boundaries.','Creative mysticism.','Spiritual service.',
+      'Idealised relationships.','Hidden spiritual depths.','Spiritual adventure.',
+      'Idealised ambitions.','Collective dreams.','Deep spiritual unity.'
+    ],
+    'Pluto': [
+      'Power of self-reinvention.','Transforms material values.','Transforms the mind.',
+      'Family karmic patterns.','Creative power and ego death.','Service transformation.',
+      'Relationship power dynamics.','Deepest transformation.','Philosophical death-rebirth.',
+      'Career power and authority.','Social transformation.','Spiritual dissolution.'
+    ]
+  };
+
+  // House meanings
+  const HOUSE_MEANINGS = [
+    'Self & Identity — appearance and first impressions',
+    'Finances & Values — money, possessions, and worth',
+    'Communication — thinking, learning, and siblings',
+    'Home & Roots — family, ancestry, and inner life',
+    'Creativity & Romance — self-expression and love affairs',
+    'Health & Service — daily work, routines, and wellbeing',
+    'Partnerships — marriage, contracts, and close bonds',
+    'Transformation — shared resources, depth, and rebirth',
+    'Philosophy — travel, higher learning, and beliefs',
+    'Career & Status — ambition, reputation, and vocation',
+    'Community — friendships, hopes, and collective purpose',
+    'Spirituality — the unconscious, dreams, and solitude'
+  ];
+
+  // Aspect definitions
+  const ASPECTS = [
+    { name: 'Conjunction', symbol: '☌', angle: 0,   orb: 8,  color: '#f59e0b', desc: 'intense fusion of energies' },
+    { name: 'Sextile',     symbol: '⚹', angle: 60,  orb: 6,  color: '#34d399', desc: 'harmonious opportunity' },
+    { name: 'Square',      symbol: '□', angle: 90,  orb: 8,  color: '#f87171', desc: 'dynamic creative tension' },
+    { name: 'Trine',       symbol: '△', angle: 120, orb: 8,  color: '#60a5fa', desc: 'flowing natural talent' },
+    { name: 'Opposition',  symbol: '☍', angle: 180, orb: 8,  color: '#c084fc', desc: 'polarising awareness' },
+  ];
+
+  // ── Zodiac helpers ────────────────────────────────────────────────────────
 
   function getSunSign(month, day) {
     const cusp = [
@@ -202,22 +529,18 @@
         return i;
       }
     }
-    // Fallback – approximate
-    const idx = Math.floor(((month - 1) * 30 + day) / 30.4) % 12;
-    return idx;
+    return Math.floor(((month - 1) * 30 + day) / 30.4) % 12;
   }
 
   function getMoonSign(dateStr) {
-    // Approximate moon sign (cycles ~2.5 days per sign)
     const date = new Date(dateStr);
-    const ref = new Date('2000-01-06'); // New moon reference
+    const ref = new Date('2000-01-06');
     const diffDays = (date - ref) / 86400000;
     const moonCycle = ((diffDays % 27.32) + 27.32) % 27.32;
     return Math.floor(moonCycle / (27.32 / 12)) % 12;
   }
 
   function getRisingSign(hour, minute, sunSignIndex) {
-    // Approximate rising: changes ~every 2 hours
     const totalMins = hour * 60 + minute;
     const offset = Math.floor(totalMins / 120);
     return (sunSignIndex + offset) % 12;
@@ -226,31 +549,79 @@
   function getPlanetData(date, time) {
     const [year, month, day] = date.split('-').map(Number);
     const [hour, minute] = time.split(':').map(Number);
-    const sunIdx  = getSunSign(month, day);
-    const moonIdx = getMoonSign(date);
+    const sunIdx    = getSunSign(month, day);
+    const moonIdx   = getMoonSign(date);
     const risingIdx = getRisingSign(hour, minute, sunIdx);
 
-    // Approximate other planets using simplified offsets
     const seed = year + month * 7 + day * 3;
     const corePlanets = [
-      { name: 'Sun ☀️',     sign: sunIdx,                  house: 1,                    deg: day % 30 },
-      { name: 'Moon 🌙',    sign: moonIdx,                 house: ((hour + 2) % 12) + 1, deg: (minute + day) % 30 },
-      { name: 'Mercury ☿',  sign: (sunIdx + (seed % 3 - 1) + 12) % 12, house: (seed % 3) + 1,  deg: (seed * 3) % 30 },
-      { name: 'Venus ♀',    sign: (sunIdx + (seed % 5 - 2) + 12) % 12, house: (seed % 5) + 1,  deg: (seed * 7) % 30 },
-      { name: 'Mars ♂',     sign: (sunIdx + (seed % 7 - 3) + 12) % 12, house: (seed % 7) + 1,  deg: (seed * 11) % 30 },
-      { name: 'Jupiter ♃',  sign: (sunIdx + month) % 12,               house: (month % 12) + 1, deg: month * 3 % 30 },
-      { name: 'Saturn ♄',   sign: (sunIdx + Math.floor(year / 3)) % 12, house: (year % 12) + 1, deg: year % 30 },
+      { name: 'Sun ☀️',    key: 'Sun',     sign: sunIdx,                                house: 1,                     deg: day % 30 },
+      { name: 'Moon 🌙',   key: 'Moon',    sign: moonIdx,                               house: ((hour + 2) % 12) + 1, deg: (minute + day) % 30 },
+      { name: 'Mercury ☿', key: 'Mercury', sign: (sunIdx + (seed % 3 - 1) + 12) % 12,  house: (seed % 3) + 1,        deg: (seed * 3) % 30 },
+      { name: 'Venus ♀',   key: 'Venus',   sign: (sunIdx + (seed % 5 - 2) + 12) % 12,  house: (seed % 5) + 1,        deg: (seed * 7) % 30 },
+      { name: 'Mars ♂',    key: 'Mars',    sign: (sunIdx + (seed % 7 - 3) + 12) % 12,  house: (seed % 7) + 1,        deg: (seed * 11) % 30 },
+      { name: 'Jupiter ♃', key: 'Jupiter', sign: (sunIdx + month) % 12,                house: (month % 12) + 1,      deg: month * 3 % 30 },
+      { name: 'Saturn ♄',  key: 'Saturn',  sign: (sunIdx + Math.floor(year / 3)) % 12, house: (year % 12) + 1,       deg: year % 30 },
     ];
 
-    // Outer planets – only included in the full (paid) chart
     const outerPlanets = [
-      { name: 'Uranus ♅',   sign: (sunIdx + Math.floor(year / 7)) % 12,   house: ((seed + 2) % 12) + 1, deg: (year * 4) % 30 },
-      { name: 'Neptune ♆',  sign: (sunIdx + Math.floor(year / 14)) % 12,  house: ((seed + 5) % 12) + 1, deg: (year * 2) % 30 },
-      { name: 'Pluto ♇',    sign: (sunIdx + Math.floor(year / 21)) % 12,  house: ((seed + 8) % 12) + 1, deg: (year + month) % 30 },
+      { name: 'Uranus ♅',  key: 'Uranus',  sign: (sunIdx + Math.floor(year / 7)) % 12,  house: ((seed + 2) % 12) + 1, deg: (year * 4) % 30 },
+      { name: 'Neptune ♆', key: 'Neptune', sign: (sunIdx + Math.floor(year / 14)) % 12, house: ((seed + 5) % 12) + 1, deg: (year * 2) % 30 },
+      { name: 'Pluto ♇',   key: 'Pluto',   sign: (sunIdx + Math.floor(year / 21)) % 12, house: ((seed + 8) % 12) + 1, deg: (year + month) % 30 },
     ];
 
     return { corePlanets, outerPlanets, rising: risingIdx, sun: sunIdx, moon: moonIdx };
   }
+
+  // ── Aspect calculator ─────────────────────────────────────────────────────
+
+  function calcAspects(planets) {
+    const found = [];
+    for (let i = 0; i < planets.length; i++) {
+      for (let j = i + 1; j < planets.length; j++) {
+        const longA = planets[i].sign * 30 + planets[i].deg;
+        const longB = planets[j].sign * 30 + planets[j].deg;
+        let diff = Math.abs(longA - longB);
+        if (diff > 180) diff = 360 - diff;
+
+        for (const asp of ASPECTS) {
+          const orb = Math.abs(diff - asp.angle);
+          if (orb <= asp.orb) {
+            found.push({
+              aspect: asp,
+              planetA: planets[i].key,
+              planetB: planets[j].key,
+              orb: orb.toFixed(1),
+            });
+            break;
+          }
+        }
+      }
+    }
+    return found;
+  }
+
+  // ── Cosmic profile builder ────────────────────────────────────────────────
+
+  function buildCosmicProfile(name, sunIdx, moonIdx, risingIdx) {
+    const sunSign  = ZODIAC[sunIdx];
+    const moonSign = ZODIAC[moonIdx];
+    const riseSign = ZODIAC[risingIdx];
+    const sunEl    = ZODIAC_ELEMENTS[sunIdx];
+    const moonEl   = ZODIAC_ELEMENTS[moonIdx];
+    const riseEl   = ZODIAC_ELEMENTS[risingIdx];
+
+    const verb = sunEl === 'Fire' ? 'blazes' : sunEl === 'Earth' ? 'grounds' : sunEl === 'Air' ? 'illuminates' : 'flows';
+    const moonMood = moonEl === 'Water' ? 'emotionally deep and perceptive' : moonEl === 'Fire' ? 'passionate and reactive' : moonEl === 'Earth' ? 'steady and sensory-driven' : 'mentally active and adaptable';
+    const riseStyle = riseEl === 'Fire' ? 'bold and magnetic' : riseEl === 'Earth' ? 'calm and composed' : riseEl === 'Air' ? 'articulate and approachable' : 'sensitive and mysterious';
+
+    return `<strong style="color:var(--glow-gold)">${name}</strong>, your <strong>${sunSign} Sun</strong> ${verb} through life with ${ZODIAC_MODALITIES[sunIdx].toLowerCase()} ${sunEl.toLowerCase()} energy. ${PLANET_SIGN_INTERP['Sun'][sunIdx]}
+    Your <strong>${moonSign} Moon</strong> reveals an inner world that is ${moonMood}. ${PLANET_SIGN_INTERP['Moon'][moonIdx]}
+    To the outside world, your <strong>${riseSign} Rising</strong> makes you appear ${riseStyle}. ${PLANET_SIGN_INTERP['Rising'][risingIdx]}
+    Together, these three pillars shape a soul that is uniquely yours — celestially encoded at the moment you drew your first breath.`;
+  }
+
+  // ── Render chart ──────────────────────────────────────────────────────────
 
   document.getElementById('birth-chart-form').addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -264,46 +635,127 @@
       return;
     }
 
-    // Wait for the access check to finish before rendering the chart so the
-    // correct tier is shown even if the form is submitted very quickly.
     await accessCheckPromise;
 
     const { corePlanets, outerPlanets, rising, sun, moon } = getPlanetData(date, time);
 
-    // Summary
+    // ── Chart summary ──
     document.getElementById('chart-summary').innerHTML = `
-      <p><strong style="color:var(--glow-gold)">${name}</strong>, here is your celestial blueprint born in <strong>${city}</strong>
+      <p><strong style="color:var(--glow-gold)">${name}</strong> — born in <strong>${city}</strong>
       on <strong>${new Date(date + 'T12:00:00').toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}</strong> at <strong>${time}</strong>.</p>
-      ${_hasPaidAccess ? '<p style="color:var(--glow-gold);font-size:0.85rem;">🌟 Full Natal Chart</p>' : ''}
+      ${_hasPaidAccess ? '<p style="color:var(--glow-gold);font-size:0.82rem;margin-top:0.3rem;">🌟 Full Natal Chart — All 10 Planets Unlocked</p>' : ''}
     `;
 
-    // Planets table – paid users see all 10 planets; preview shows 7
+    // ── Big Three ──
+    const bigThreeData = [
+      { cls: 'sun-card',  icon: '☀️', label: 'Sun Sign',     signIdx: sun,    title: `${ZODIAC_GLYPHS[sun]} ${ZODIAC[sun]}`,    key: 'Sun' },
+      { cls: 'moon-card', icon: '🌙', label: 'Moon Sign',    signIdx: moon,   title: `${ZODIAC_GLYPHS[moon]} ${ZODIAC[moon]}`,  key: 'Moon' },
+      { cls: 'rise-card', icon: '⬆️', label: 'Rising Sign',  signIdx: rising, title: `${ZODIAC_GLYPHS[rising]} ${ZODIAC[rising]}`, key: 'Rising' },
+    ];
+    document.getElementById('big-three').innerHTML = bigThreeData.map(b => `
+      <div class="big-three-card ${b.cls}">
+        <span class="bt-icon">${b.icon}</span>
+        <div class="bt-label">${b.label}</div>
+        <div class="bt-sign">${b.title}</div>
+        <div class="bt-desc">${PLANET_SIGN_INTERP[b.key][b.signIdx]}</div>
+      </div>
+    `).join('');
+
+    // ── Cosmic Profile ──
+    const profileEl = document.getElementById('cosmic-profile');
+    profileEl.style.display = 'block';
+    document.getElementById('profile-text').innerHTML = buildCosmicProfile(name, sun, moon, rising);
+
+    // ── Planetary positions table ──
     const planets = _hasPaidAccess ? [...corePlanets, ...outerPlanets] : corePlanets;
     const tbody = document.getElementById('planets-tbody');
     tbody.innerHTML = '';
     planets.forEach(p => {
+      const interpMap = PLANET_SIGN_INTERP[p.key] || OUTER_PLANET_INTERP[p.key];
+      const interp = interpMap ? interpMap[p.sign] : '';
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${p.name}</td><td>${ZODIAC_GLYPHS[p.sign]} ${ZODIAC[p.sign]}</td><td>${p.house}</td><td>${p.deg}°</td>`;
+      tr.innerHTML = `
+        <td>${p.name}</td>
+        <td>${ZODIAC_GLYPHS[p.sign]} ${ZODIAC[p.sign]}</td>
+        <td>${p.house}</td>
+        <td>${p.deg}°</td>
+        <td class="interp">${interp}</td>`;
       tbody.appendChild(tr);
     });
 
-    // Luminaries summary
+    // Locked outer planets hint for free tier
+    if (!_hasPaidAccess) {
+      outerPlanets.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.className = 'locked-row';
+        tr.innerHTML = `<td>${p.name}</td><td colspan="4"><span class="lock-icon">🔒</span> Unlock with full chart purchase</td>`;
+        tbody.appendChild(tr);
+      });
+      document.getElementById('unlock-hint').innerHTML = `
+        <div class="unlock-hint">
+          🔒 <a href="/#pricing" style="color:var(--stardust);">Purchase the full chart ($1.99)</a> to reveal Uranus, Neptune &amp; Pluto positions and gain access to all cosmic layers.
+        </div>`;
+    } else {
+      document.getElementById('unlock-hint').innerHTML = '';
+    }
+
+    // ── House placements ──
+    const houseGrid = document.getElementById('house-grid');
+    houseGrid.innerHTML = '';
+    planets.forEach(p => {
+      const hIdx = p.house - 1;
+      const div = document.createElement('div');
+      div.className = 'house-item';
+      div.innerHTML = `
+        <div class="house-num">${p.house}</div>
+        <div class="house-text">
+          <span class="h-sign">${p.key} in ${ZODIAC[p.sign]}</span><br>
+          <span class="h-meaning">${HOUSE_MEANINGS[hIdx]}</span>
+        </div>`;
+      houseGrid.appendChild(div);
+    });
+
+    // ── Key Aspects ──
+    const aspectsToCheck = _hasPaidAccess ? [...corePlanets, ...outerPlanets] : corePlanets;
+    const aspects = calcAspects(aspectsToCheck);
+    const aspectsTbody = document.getElementById('aspects-tbody');
+    aspectsTbody.innerHTML = '';
+    if (aspects.length === 0) {
+      document.getElementById('aspects-empty').style.display = 'block';
+    } else {
+      document.getElementById('aspects-empty').style.display = 'none';
+      aspects.forEach(a => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><span class="aspect-symbol" style="color:${a.aspect.color}">${a.aspect.symbol}</span> ${a.aspect.name}</td>
+          <td>${a.planetA} &amp; ${a.planetB}</td>
+          <td>${a.orb}°</td>
+          <td style="color:var(--dim-text);font-size:0.78rem;">${a.aspect.desc}</td>`;
+        aspectsTbody.appendChild(tr);
+      });
+    }
+
+    // ── Luminaries summary ──
     const noteHTML = _hasPaidAccess
-      ? '<p style="margin-top:0.75rem;font-size:0.85rem;color:var(--dim-text);">Rising sign requires precise birth time. Planetary positions are calculated from your birth data.</p>'
-      : '<p style="margin-top:0.75rem;font-size:0.85rem;color:var(--dim-text);">Rising sign requires precise birth time. Planetary positions shown are approximate. <a href="/#pricing" style="color:var(--stardust);">Purchase the full chart</a> to unlock all 10 planets.</p>';
+      ? '<p style="margin-top:0.75rem;font-size:0.82rem;color:var(--dim-text);">Rising sign is calculated from your birth time. Planetary positions are approximated from your birth data.</p>'
+      : '<p style="margin-top:0.75rem;font-size:0.82rem;color:var(--dim-text);">Positions are approximate. <a href="/#pricing" style="color:var(--stardust);">Purchase the full chart</a> to unlock all 10 planets &amp; deeper interpretations.</p>';
 
     document.getElementById('luminaries-summary').innerHTML = `
-      <p>☀️ <strong>Sun Sign:</strong> ${ZODIAC_GLYPHS[sun]} <strong>${ZODIAC[sun]}</strong> &nbsp;—&nbsp;
-         🌙 <strong>Moon Sign:</strong> ${ZODIAC_GLYPHS[moon]} <strong>${ZODIAC[moon]}</strong> &nbsp;—&nbsp;
-         ⬆️ <strong>Rising:</strong> ${ZODIAC_GLYPHS[rising]} <strong>${ZODIAC[rising]}</strong></p>
+      <p>☀️ <strong>Sun:</strong> ${ZODIAC_GLYPHS[sun]} <strong>${ZODIAC[sun]}</strong>
+         &nbsp;·&nbsp; <span style="font-size:0.8rem;color:var(--dim-text)">${ZODIAC_ELEMENTS[sun]} / ${ZODIAC_MODALITIES[sun]}</span>
+         &nbsp;&nbsp;
+         🌙 <strong>Moon:</strong> ${ZODIAC_GLYPHS[moon]} <strong>${ZODIAC[moon]}</strong>
+         &nbsp;·&nbsp; <span style="font-size:0.8rem;color:var(--dim-text)">${ZODIAC_ELEMENTS[moon]} / ${ZODIAC_MODALITIES[moon]}</span>
+         &nbsp;&nbsp;
+         ⬆️ <strong>Rising:</strong> ${ZODIAC_GLYPHS[rising]} <strong>${ZODIAC[rising]}</strong>
+         &nbsp;·&nbsp; <span style="font-size:0.8rem;color:var(--dim-text)">${ZODIAC_ELEMENTS[rising]} / ${ZODIAC_MODALITIES[rising]}</span>
+      </p>
       ${noteHTML}
     `;
 
-    // Bottom CTA – hide the subscription upsell for paid users
+    // ── Bottom CTA ──
     const ctaEl = document.getElementById('chart-bottom-cta');
-    if (ctaEl) {
-      ctaEl.style.display = _hasPaidAccess ? 'none' : 'block';
-    }
+    if (ctaEl) ctaEl.style.display = _hasPaidAccess ? 'none' : 'block';
 
     document.getElementById('result-area').style.display = 'block';
     document.getElementById('result-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
