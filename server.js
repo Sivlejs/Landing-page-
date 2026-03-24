@@ -236,6 +236,70 @@ app.get('/api/paypal/config', apiLimiter, (_req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// API: diagnostic – verify subscription plan is reachable and ACTIVE
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /api/paypal/check-plan
+ *
+ * Verifies that the configured PAYPAL_SUBSCRIPTION_PLAN_ID exists in PayPal
+ * and that its status is ACTIVE.  Useful for diagnosing the common
+ * "Not available. Try again later." error on the subscription button.
+ *
+ * Response: { configured: boolean, active?: boolean, status?: string, name?: string, correlationId: string }
+ */
+app.get('/api/paypal/check-plan', apiLimiter, async (_req, res) => {
+  const correlationId = makeCorrelationId();
+
+  if (!PAYPAL_SUBSCRIPTION_PLAN_ID || PAYPAL_SUBSCRIPTION_PLAN_ID === PLACEHOLDER_PLAN) {
+    return res.json({ configured: false, reason: 'PAYPAL_SUBSCRIPTION_PLAN_ID is not set', correlationId });
+  }
+
+  if (!/^P-[A-Z0-9]{6,30}$/.test(PAYPAL_SUBSCRIPTION_PLAN_ID)) {
+    return res.json({ configured: false, reason: 'PAYPAL_SUBSCRIPTION_PLAN_ID format is invalid (expected P-…)', correlationId });
+  }
+
+  try {
+    const accessToken = await getPayPalAccessToken();
+
+    const planRes = await axios.get(
+      `${PAYPAL_BASE}/v1/billing/plans/${PAYPAL_SUBSCRIPTION_PLAN_ID}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+
+    const { status, name, id } = planRes.data;
+    const active = status === 'ACTIVE';
+
+    log(active ? 'info' : 'warn', 'check-plan:result', { correlationId, planId: id, status });
+
+    return res.json({ configured: true, active, status, name, planId: id, mode: PAYPAL_MODE, correlationId });
+  } catch (err) {
+    const httpStatus = err.response?.status;
+    log('error', 'check-plan:fail', {
+      correlationId,
+      httpStatus,
+      paypalError: err.response?.data?.name,
+      message: err.message,
+    });
+
+    if (httpStatus === 404) {
+      return res.status(404).json({
+        configured: true,
+        active: false,
+        reason: 'Plan not found – verify the plan ID exists in ' + PAYPAL_MODE + ' mode and was not deleted',
+        correlationId,
+      });
+    }
+
+    return res.status(500).json({
+      error: 'Failed to verify plan',
+      detail: err.response?.data?.message || err.message,
+      correlationId,
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // API: create a one-time order  (idempotency via PayPal-Request-Id header)
 // ---------------------------------------------------------------------------
 

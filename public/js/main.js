@@ -126,7 +126,9 @@ function ensurePayPalSdk(clientId) {
     // If already loaded (e.g. hard-refresh with cached script)
     if (window.paypal) { resolve(); return; }
 
-    const src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&vault=true&enable-funding=card`;
+    // vault=true enables createSubscription; omit enable-funding=card to avoid
+    // conflicts that cause subscriptions to show "Not available. Try again later."
+    const src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&vault=true`;
 
     // Guard against a pre-existing script tag with a different URL
     const existing = document.querySelector('script[src^="https://www.paypal.com/sdk/js"]');
@@ -302,6 +304,7 @@ function renderPaymentButtons(subscriptionPlanId) {
       },
     }).render('#paypal-subscription-container').catch(err => {
       console.error('Failed to render subscription button:', err);
+      setStatus(ppSubContainer, 'error', 'Subscription unavailable. Please refresh the page or contact support.');
     });
   } else if (ppSubContainer) {
     // Show a contact/waitlist message if no plan ID configured

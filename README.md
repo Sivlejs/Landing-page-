@@ -326,13 +326,33 @@ The server adds these headers to every response:
 | "PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET must be set" | Ensure your `.env` file exists and contains valid credentials |
 | PayPal buttons don't appear | Check browser console for errors; verify `PAYPAL_CLIENT_ID` is correct |
 | "Failed to create order" | Verify your API credentials are valid and not expired |
-| Subscription button not working | Ensure `PAYPAL_SUBSCRIPTION_PLAN_ID` is set to a valid plan ID |
-| One-time payment and subscription buttons conflict | Previously caused by loading the SDK twice. Both flows are now supported by a **single** SDK load (`vault=true&intent=capture`). If you see SDK errors on an old deployment, hard-refresh the page to clear any cached scripts. |
+| Subscription button not working | Ensure `PAYPAL_SUBSCRIPTION_PLAN_ID` is set to a valid plan ID. The plan must be **ACTIVE** in the **same mode** (sandbox or live) as your credentials. See *Diagnosing "Not available"* below. |
+| "Not available. Try again later." on subscription button | The plan ID is missing, inactive, or belongs to the wrong mode. See *Diagnosing "Not available"* below. |
+| One-time payment and subscription buttons conflict | Ensure the PayPal SDK URL contains only `vault=true` (no `enable-funding=card`). That extra parameter causes the subscription button to fail with "Not available. Try again later." Hard-refresh the page after deploying the fix. |
 | Can't log into sandbox | Use sandbox account credentials from the Developer Dashboard, not your real PayPal account |
 | Webhook `401 Invalid webhook signature` | Verify `PAYPAL_WEBHOOK_ID` matches the ID in the PayPal dashboard exactly. |
 | Webhook events not arriving locally | Use ngrok: `ngrok http 3000`. Update the webhook URL in the PayPal dashboard. |
 | `CORS` errors calling PayPal API | Calls to PayPal REST API are made server-side — there should be no CORS errors. If you see them, ensure you are calling `/api/paypal/*` (your own server), not PayPal directly from the browser. |
 | Mixed environment (Live SDK + Sandbox backend) | Ensure `PAYPAL_MODE` matches the account type of your Client ID and Secret. The server will refuse to start if the Client ID contains "sandbox" in live mode. |
+
+### Diagnosing "Not available. Try again later." on the subscription button
+
+This PayPal error means the subscription plan cannot be created.  Work through the steps below:
+
+1. **Visit** `http://localhost:3000/api/paypal/check-plan` (or your deployed URL).  
+   The endpoint reports whether the plan ID is set, reachable, and ACTIVE.
+
+   | Response field | Meaning |
+   |---|---|
+   | `configured: false, reason: "not set"` | `PAYPAL_SUBSCRIPTION_PLAN_ID` is missing from your environment variables. Add it and restart the server. |
+   | `configured: false, reason: "invalid format"` | The plan ID does not match the `P-…` format. Copy the exact value from the PayPal dashboard. |
+   | `active: false, status: "INACTIVE"` | The plan exists but is inactive. Open the PayPal Developer Dashboard → Subscriptions → Plans → select the plan → click **Activate**. |
+   | `active: false, reason: "Plan not found"` | The plan ID exists in the environment but PayPal returns 404. The most common cause is a **mode mismatch**: a sandbox plan ID used with `PAYPAL_MODE=live` (or vice versa). Create a matching plan for the current mode and update the environment variable. |
+   | `active: true` | The plan is valid. The "Not available" error was likely caused by the SDK URL conflict (see the row above in the table). Hard-refresh the browser and re-test. |
+
+2. **Check the mode**: Sandbox plans only work with sandbox credentials (`PAYPAL_MODE=sandbox`) and live plans only work with live credentials (`PAYPAL_MODE=live`). These are completely separate environments.
+
+3. **Verify the plan is ACTIVE** in the [PayPal Developer Dashboard](https://developer.paypal.com/dashboard/).
 
 ### Checking Your Configuration
 
@@ -342,6 +362,21 @@ http://localhost:3000/api/paypal/config
 ```
 
 This returns your client ID and subscription plan ID (secrets are never exposed).
+
+To verify the subscription plan is reachable and **ACTIVE** in PayPal:
+```
+http://localhost:3000/api/paypal/check-plan
+```
+
+Example responses:
+```json
+{ "configured": true, "active": true, "status": "ACTIVE", "name": "Monthly Full Access", "planId": "P-…", "mode": "sandbox" }
+{ "configured": true, "active": false, "status": "INACTIVE", "planId": "P-…", "mode": "live" }
+{ "configured": false, "reason": "PAYPAL_SUBSCRIPTION_PLAN_ID is not set" }
+{ "configured": true, "active": false, "reason": "Plan not found – verify the plan ID exists in live mode and was not deleted" }
+```
+
+If `active` is `false`, activate the plan in the PayPal Developer Dashboard or create a new one and update `PAYPAL_SUBSCRIPTION_PLAN_ID`.
 
 ### Getting Help
 
