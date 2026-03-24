@@ -139,23 +139,43 @@
 
   // ── Access check ─────────────────────────────────────────────────────────
   // After a successful one-time payment, main.js stores the captured PayPal
-  // order ID in localStorage under "chartAccessToken".  We verify that token
-  // server-side so the entitlement cannot be spoofed by the client.
+  // order ID in localStorage under "chartAccessToken".  After a subscription
+  // payment, the subscription ID is stored under "subscriptionID".
+  // We verify both tokens server-side so entitlements cannot be spoofed.
 
   let _hasPaidAccess = false;
 
   async function checkAccess() {
-    let token;
-    try { token = localStorage.getItem('chartAccessToken'); } catch (_) { return; }
-    if (!token) return;
-
+    let token, subscriptionID;
     try {
-      const res = await fetch('/api/verify-access?orderID=' + encodeURIComponent(token));
-      if (!res.ok) return;
-      const data = await res.json();
-      _hasPaidAccess = !!data.hasAccess;
-    } catch (_) {
-      // Network error – leave _hasPaidAccess as false; user can retry.
+      token = localStorage.getItem('chartAccessToken');
+      subscriptionID = localStorage.getItem('subscriptionID');
+    } catch (_) { return; }
+
+    // Check one-time order access first
+    if (token) {
+      try {
+        const res = await fetch('/api/verify-access?orderID=' + encodeURIComponent(token));
+        if (res.ok) {
+          const data = await res.json();
+          if (data.hasAccess) { _hasPaidAccess = true; return; }
+        }
+      } catch (_) {
+        // Network error – continue to subscription check.
+      }
+    }
+
+    // Check active subscription access (reload / page-refresh support)
+    if (subscriptionID) {
+      try {
+        const res = await fetch('/api/paypal/check-subscription?subscriptionID=' + encodeURIComponent(subscriptionID));
+        if (res.ok) {
+          const data = await res.json();
+          if (data.active) { _hasPaidAccess = true; return; }
+        }
+      } catch (_) {
+        // Network error – leave _hasPaidAccess as false; user can retry.
+      }
     }
   }
 
