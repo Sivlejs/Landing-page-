@@ -324,7 +324,6 @@ async function showSubscriptionPayment() {
       },
 
       createSubscription: (_data, actions) => {
-        setStatus(ppSubContainer, 'loading', 'Setting up subscription' + ELLIPSIS);
         return actions.subscription.create({ plan_id: subscriptionPlanId });
       },
 
