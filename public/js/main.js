@@ -176,6 +176,32 @@ async function loadPayPal() {
 
     const hasSubPlan = subscriptionPlanId && subscriptionPlanId !== 'your_subscription_plan_id_here';
 
+    // Pre-flight: verify the subscription plan is active before loading the SDK.
+    // This prevents PayPal's own "Not available. Try again later." popup which
+    // appears when the plan does not exist or is not ACTIVE in the current
+    // environment (e.g. a sandbox plan used with live credentials).
+    let planVerified = false;
+    if (hasSubPlan) {
+      try {
+        const planRes = await fetch('/api/paypal/check-plan');
+        if (planRes.ok) {
+          const planData = await planRes.json();
+          planVerified = !!(planData.configured && planData.active);
+          if (!planVerified) {
+            console.warn(
+              'Subscription plan not ready:',
+              planData.reason || planData.status || 'unknown'
+            );
+          }
+        }
+      } catch (planErr) {
+        // If the diagnostic endpoint itself is unreachable (e.g. network hiccup),
+        // don't block the subscription button – let PayPal surface any error.
+        console.warn('Could not verify subscription plan:', planErr.message);
+        planVerified = true;
+      }
+    }
+
     // Load both SDKs in parallel.  Each uses a separate data-namespace so they
     // don't conflict – this is the official PayPal approach for pages that need
     // both createOrder (intent=capture) and createSubscription (vault=true,
@@ -187,7 +213,7 @@ async function loadPayPal() {
     );
 
     let subscriptionReady = false;
-    if (hasSubPlan) {
+    if (hasSubPlan && planVerified) {
       subscriptionReady = await ensurePayPalSubscriptionSdk(clientId).then(
         () => true,
         (err) => { console.warn('PayPal subscription SDK load failed:', err); return false; }
@@ -200,7 +226,8 @@ async function loadPayPal() {
     renderPaymentButtons(
       subscriptionPlanId,
       ordersResult === 'fulfilled',
-      subscriptionReady
+      subscriptionReady,
+      hasSubPlan && !planVerified
     );
 
   } catch (err) {
@@ -219,7 +246,7 @@ function showConfigError() {
   clearStatus(ppSubContainer);
 }
 
-function renderPaymentButtons(subscriptionPlanId, ordersReady, subscriptionReady) {
+function renderPaymentButtons(subscriptionPlanId, ordersReady, subscriptionReady, planUnavailable) {
   const loadingChart = document.getElementById('paypal-loading-chart');
   if (loadingChart) loadingChart.remove();
   const loadingSub = document.getElementById('paypal-loading-sub');
@@ -302,6 +329,7 @@ function renderPaymentButtons(subscriptionPlanId, ordersReady, subscriptionReady
 
       createSubscription: (_data, actions) => {
         setStatus(ppSubContainer, 'loading', 'Setting up subscription' + ELLIPSIS);
+        // PayPal calls onError if this promise rejects, so no .catch needed here.
         return actions.subscription.create({ plan_id: subscriptionPlanId });
       },
 
@@ -341,6 +369,16 @@ function renderPaymentButtons(subscriptionPlanId, ordersReady, subscriptionReady
       console.error('Failed to render subscription button:', err);
       setStatus(ppSubContainer, 'error', 'Subscription unavailable. Please refresh the page or contact support.');
     });
+  } else if (planUnavailable && ppSubContainer) {
+    // Plan is configured but not active in the current environment – show a
+    // friendly message instead of the PayPal button so users don't see
+    // PayPal's own "Not available. Try again later." error popup.
+    ppSubContainer.innerHTML = `
+      <p style="color:var(--dim-text);font-size:0.85rem;text-align:center;padding:0.75rem 0;">
+        Subscription is temporarily unavailable. Please try again later or
+        <a href="mailto:hello@celestialeye.app" style="color:var(--stardust);" aria-label="Contact support via email">contact us</a>
+        to get started.
+      </p>`;
   } else if (ppSubContainer) {
     // Show a contact/waitlist message if no plan ID configured
     ppSubContainer.innerHTML = `
