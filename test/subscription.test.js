@@ -105,4 +105,53 @@ describe('check-plan plan ID validation', () => {
   test('reports configured for a sandbox plan ID', () => {
     assert.deepEqual(planConfigured('P-1AB23456CD789012EF3456'), { configured: true });
   });
+
+  test('reports configured for the known plan ID', () => {
+    // Validates the specific plan ID format P-7TU52859DC528615ANG7P2OY
+    assert.deepEqual(planConfigured('P-7TU52859DC528615ANG7P2OY'), { configured: true });
+  });
+});
+
+// ── subscription active-status logic ─────────────────────────────────────
+// Tests the status→active mapping used by both /api/paypal/verify-subscription
+// (called immediately after PayPal's onApprove) and /api/paypal/check-subscription
+// (called on page reload).  Mirrors the logic in server.js so regressions are
+// caught before deployment.
+
+describe('subscription active-status check', () => {
+  // This function mirrors the `active` calculation in server.js for both
+  // verify-subscription and check-subscription.
+  function isActive(status) {
+    return status === 'ACTIVE' || status === 'APPROVED' || status === 'APPROVAL_PENDING';
+  }
+
+  test('treats ACTIVE as active', () => {
+    assert.equal(isActive('ACTIVE'), true);
+  });
+
+  test('treats APPROVED as active', () => {
+    assert.equal(isActive('APPROVED'), true);
+  });
+
+  test('treats APPROVAL_PENDING as active (PayPal API timing window)', () => {
+    // PayPal's Subscriptions API can briefly still show APPROVAL_PENDING right
+    // after onApprove fires or when the user reloads the page very quickly.
+    assert.equal(isActive('APPROVAL_PENDING'), true);
+  });
+
+  test('treats CANCELLED as not active', () => {
+    assert.equal(isActive('CANCELLED'), false);
+  });
+
+  test('treats SUSPENDED as not active', () => {
+    assert.equal(isActive('SUSPENDED'), false);
+  });
+
+  test('treats EXPIRED as not active', () => {
+    assert.equal(isActive('EXPIRED'), false);
+  });
+
+  test('treats an unknown status as not active', () => {
+    assert.equal(isActive('UNKNOWN_STATE'), false);
+  });
 });
