@@ -115,39 +115,47 @@ function clearStatus(container) {
 const ELLIPSIS = '\u2026';
 
 /**
- * Load the PayPal JS SDK exactly once, returning a promise that resolves
- * when window.paypal is ready.
+ * Load the PayPal JS SDK for one-time order payments (intent=capture).
+ * Uses data-namespace="paypalOrders" so it coexists with the subscription SDK.
  */
-let sdkLoadPromise = null;
+let sdkOrdersLoadPromise = null;
 
-function ensurePayPalSdk(clientId) {
-  if (sdkLoadPromise) return sdkLoadPromise;
-  sdkLoadPromise = new Promise((resolve, reject) => {
-    // If already loaded (e.g. hard-refresh with cached script)
-    if (window.paypal) { resolve(); return; }
-
-    // vault=true enables createSubscription; omit enable-funding=card to avoid
-    // conflicts that cause subscriptions to show "Not available. Try again later."
-    const src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&vault=true`;
-
-    // Guard against a pre-existing script tag with a different URL
-    const existing = document.querySelector('script[src^="https://www.paypal.com/sdk/js"]');
-    if (existing) {
-      // Wait for it to finish loading if still in-flight
-      if (window.paypal) { resolve(); return; }
-      existing.addEventListener('load', resolve);
-      existing.addEventListener('error', reject);
-      return;
-    }
-
+function ensurePayPalOrdersSdk(clientId) {
+  if (sdkOrdersLoadPromise) return sdkOrdersLoadPromise;
+  sdkOrdersLoadPromise = new Promise((resolve, reject) => {
+    if (window.paypalOrders) { resolve(); return; }
     const s = document.createElement('script');
-    s.src = src;
+    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&intent=capture&components=buttons`;
+    s.setAttribute('data-namespace', 'paypalOrders');
     s.setAttribute('data-sdk-integration-source', 'celestialeye');
     s.onload = resolve;
-    s.onerror = () => reject(new Error('PayPal SDK script failed to load'));
+    s.onerror = () => reject(new Error('PayPal orders SDK failed to load'));
     document.head.appendChild(s);
   });
-  return sdkLoadPromise;
+  return sdkOrdersLoadPromise;
+}
+
+/**
+ * Load the PayPal JS SDK for subscriptions (vault=true, intent=subscription).
+ * Uses data-namespace="paypalSubscription" so it coexists with the orders SDK.
+ * Loading the SDK twice with different namespaces is the official PayPal-
+ * recommended approach for pages that offer both payment types.
+ */
+let sdkSubscriptionLoadPromise = null;
+
+function ensurePayPalSubscriptionSdk(clientId) {
+  if (sdkSubscriptionLoadPromise) return sdkSubscriptionLoadPromise;
+  sdkSubscriptionLoadPromise = new Promise((resolve, reject) => {
+    if (window.paypalSubscription) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&vault=true&intent=subscription&components=buttons`;
+    s.setAttribute('data-namespace', 'paypalSubscription');
+    s.setAttribute('data-sdk-integration-source', 'celestialeye');
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('PayPal subscription SDK failed to load'));
+    document.head.appendChild(s);
+  });
+  return sdkSubscriptionLoadPromise;
 }
 
 async function loadPayPal() {
@@ -166,13 +174,34 @@ async function loadPayPal() {
       return;
     }
 
-    // Load PayPal JS SDK once – vault=true enables subscriptions; intent=capture supports one-time
-    await ensurePayPalSdk(clientId);
+    const hasSubPlan = subscriptionPlanId && subscriptionPlanId !== 'your_subscription_plan_id_here';
+
+    // Load both SDKs in parallel.  Each uses a separate data-namespace so they
+    // don't conflict – this is the official PayPal approach for pages that need
+    // both createOrder (intent=capture) and createSubscription (vault=true,
+    // intent=subscription) buttons.  If the subscription SDK fails we still
+    // render the one-time button.
+    const ordersResult = await ensurePayPalOrdersSdk(clientId).then(
+      () => 'fulfilled',
+      (err) => { console.warn('PayPal orders SDK load failed:', err); return 'rejected'; }
+    );
+
+    let subscriptionReady = false;
+    if (hasSubPlan) {
+      subscriptionReady = await ensurePayPalSubscriptionSdk(clientId).then(
+        () => true,
+        (err) => { console.warn('PayPal subscription SDK load failed:', err); return false; }
+      );
+    }
 
     clearStatus(ppChartContainer);
     clearStatus(ppSubContainer);
 
-    renderPaymentButtons(subscriptionPlanId);
+    renderPaymentButtons(
+      subscriptionPlanId,
+      ordersResult === 'fulfilled',
+      subscriptionReady
+    );
 
   } catch (err) {
     console.warn('PayPal load failed:', err.message);
@@ -190,14 +219,14 @@ function showConfigError() {
   clearStatus(ppSubContainer);
 }
 
-function renderPaymentButtons(subscriptionPlanId) {
+function renderPaymentButtons(subscriptionPlanId, ordersReady, subscriptionReady) {
   const loadingChart = document.getElementById('paypal-loading-chart');
   if (loadingChart) loadingChart.remove();
   const loadingSub = document.getElementById('paypal-loading-sub');
 
   // ── One-time $1.99 birth chart button ──
-  if (window.paypal && ppChartContainer) {
-    window.paypal.Buttons({
+  if (ordersReady && ppChartContainer) {
+    window.paypalOrders.Buttons({
       style: {
         layout: 'vertical',
         color: 'blue',
@@ -251,13 +280,19 @@ function renderPaymentButtons(subscriptionPlanId) {
     }).render('#paypal-button-container').catch(err => {
       console.error('Failed to render one-time payment button:', err);
     });
+  } else if (!ordersReady && ppChartContainer) {
+    ppChartContainer.innerHTML = `
+      <p style="color:var(--dim-text);font-size:0.85rem;text-align:center;padding:0.75rem 0;">
+        Payment unavailable. Please refresh the page or
+        <a href="mailto:hello@celestialeye.app" style="color:var(--stardust);">contact us</a>.
+      </p>`;
   }
 
   // ── Monthly subscription button ──
   if (loadingSub) loadingSub.remove();
 
-  if (subscriptionPlanId && subscriptionPlanId !== 'your_subscription_plan_id_here' && window.paypal && ppSubContainer) {
-    window.paypal.Buttons({
+  if (subscriptionReady && ppSubContainer) {
+    window.paypalSubscription.Buttons({
       style: {
         layout: 'vertical',
         color: 'gold',
