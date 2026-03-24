@@ -60,23 +60,11 @@ document.querySelectorAll('.faq-question').forEach(btn => {
   });
 });
 
-// ── Show/hide primary CTA vs PayPal container ──────────────
+// ── PayPal container references ────────────────────────────
 const chartPayBtn = document.getElementById('chart-pay-btn');
 const subPayBtn   = document.getElementById('sub-pay-btn');
 const ppChartContainer = document.getElementById('paypal-button-container');
 const ppSubContainer   = document.getElementById('paypal-subscription-container');
-
-function showPayPalContainer(container, primaryBtn) {
-  if (primaryBtn) primaryBtn.style.display = 'none';
-  if (container) container.style.display = 'block';
-}
-
-if (chartPayBtn) {
-  chartPayBtn.addEventListener('click', () => showPayPalContainer(ppChartContainer, chartPayBtn));
-}
-if (subPayBtn) {
-  subPayBtn.addEventListener('click', () => showPayPalContainer(ppSubContainer, subPayBtn));
-}
 
 // Initially hide PayPal containers (shown only on CTA click)
 if (ppChartContainer) ppChartContainer.style.display = 'none';
@@ -110,9 +98,26 @@ function clearStatus(container) {
   if (el) el.remove();
 }
 
-// ── Load PayPal SDK and render buttons ─────────────────────
+// ── PayPal SDK / config helpers ────────────────────────────
 
 const ELLIPSIS = '\u2026';
+
+/**
+ * Cached PayPal config promise.  Fetched once from the server; subsequent
+ * calls return the same promise so only one request is ever made.
+ */
+let _configPromise = null;
+
+/** Fetch (and cache) the PayPal config from the server. */
+function getPayPalConfig() {
+  if (_configPromise) return _configPromise;
+  _configPromise = fetch('/api/paypal/config')
+    .then(res => {
+      if (!res.ok) throw new Error('Config unavailable');
+      return res.json();
+    });
+  return _configPromise;
+}
 
 /**
  * Load the PayPal JS SDK for one-time order payments (intent=capture).
@@ -158,74 +163,51 @@ function ensurePayPalSubscriptionSdk(clientId) {
   return sdkSubscriptionLoadPromise;
 }
 
-async function loadPayPal() {
-  try {
-    // Show "Connecting to PayPal…" in both containers while we fetch config
-    setStatus(ppChartContainer, 'loading', 'Connecting to PayPal' + ELLIPSIS);
-    setStatus(ppSubContainer, 'loading', 'Connecting to PayPal' + ELLIPSIS);
+function showConfigError() {
+  const loadingEls = document.querySelectorAll('.paypal-loading');
+  loadingEls.forEach(el => {
+    el.textContent = 'Payment system is being configured. Please check back soon.';
+  });
+  clearStatus(ppChartContainer);
+  clearStatus(ppSubContainer);
+}
 
-    const res = await fetch('/api/paypal/config');
-    if (!res.ok) throw new Error('Config unavailable');
-    const config = await res.json();
-    const { clientId, subscriptionPlanId } = config;
+// ── Lazy (deferred) button rendering ───────────────────────
+// Buttons are rendered the first time the user clicks a CTA, at which point
+// the container is already visible.  This avoids the well-known PayPal SDK
+// issue where buttons rendered into a display:none container appear broken.
+
+let chartButtonRendered = false;
+let subButtonRendered   = false;
+
+/**
+ * Show the one-time payment container and render the PayPal order button.
+ * Safe to call multiple times – rendering only happens once.
+ */
+async function showChartPayment() {
+  if (chartPayBtn) chartPayBtn.style.display = 'none';
+  if (ppChartContainer) ppChartContainer.style.display = 'block';
+
+  if (chartButtonRendered) return; // already rendered on a previous click
+  chartButtonRendered = true;
+
+  setStatus(ppChartContainer, 'loading', 'Connecting to PayPal' + ELLIPSIS);
+
+  try {
+    const config = await getPayPalConfig();
+    const { clientId } = config;
 
     if (!clientId || clientId === 'your_paypal_client_id_here') {
       showConfigError();
       return;
     }
 
-    const hasSubPlan = subscriptionPlanId && subscriptionPlanId !== 'your_subscription_plan_id_here';
-
-    // Load both SDKs in parallel.  Each uses a separate data-namespace so they
-    // don't conflict – this is the official PayPal approach for pages that need
-    // both createOrder (intent=capture) and createSubscription (vault=true,
-    // intent=subscription) buttons.  If the subscription SDK fails we still
-    // render the one-time button.
-    const ordersResult = await ensurePayPalOrdersSdk(clientId).then(
-      () => 'fulfilled',
-      (err) => { console.warn('PayPal orders SDK load failed:', err); return 'rejected'; }
-    );
-
-    let subscriptionReady = false;
-    if (hasSubPlan) {
-      subscriptionReady = await ensurePayPalSubscriptionSdk(clientId).then(
-        () => true,
-        (err) => { console.warn('PayPal subscription SDK load failed:', err); return false; }
-      );
-    }
+    await ensurePayPalOrdersSdk(clientId);
 
     clearStatus(ppChartContainer);
-    clearStatus(ppSubContainer);
+    const loadingChart = document.getElementById('paypal-loading-chart');
+    if (loadingChart) loadingChart.remove();
 
-    renderPaymentButtons(
-      subscriptionPlanId,
-      ordersResult === 'fulfilled',
-      subscriptionReady
-    );
-
-  } catch (err) {
-    console.warn('PayPal load failed:', err.message);
-    showConfigError();
-  }
-}
-
-function showConfigError() {
-  const loadingEls = document.querySelectorAll('.paypal-loading');
-  loadingEls.forEach(el => {
-    el.textContent = 'Payment system is being configured. Please check back soon.';
-  });
-  // Also clear any status messages
-  clearStatus(ppChartContainer);
-  clearStatus(ppSubContainer);
-}
-
-function renderPaymentButtons(subscriptionPlanId, ordersReady, subscriptionReady) {
-  const loadingChart = document.getElementById('paypal-loading-chart');
-  if (loadingChart) loadingChart.remove();
-  const loadingSub = document.getElementById('paypal-loading-sub');
-
-  // ── One-time $1.99 birth chart button ──
-  if (ordersReady && ppChartContainer) {
     window.paypalOrders.Buttons({
       style: {
         layout: 'vertical',
@@ -279,19 +261,60 @@ function renderPaymentButtons(subscriptionPlanId, ordersReady, subscriptionReady
       },
     }).render('#paypal-button-container').catch(err => {
       console.error('Failed to render one-time payment button:', err);
+      setStatus(ppChartContainer, 'error', 'Payment unavailable. Please refresh the page or contact us.');
     });
-  } else if (!ordersReady && ppChartContainer) {
-    ppChartContainer.innerHTML = `
-      <p style="color:var(--dim-text);font-size:0.85rem;text-align:center;padding:0.75rem 0;">
-        Payment unavailable. Please refresh the page or
-        <a href="mailto:hello@celestialeye.app" style="color:var(--stardust);">contact us</a>.
-      </p>`;
+
+  } catch (err) {
+    console.warn('PayPal chart payment load failed:', err.message);
+    chartButtonRendered = false; // allow retry on next click
+    // Re-show the CTA button so the user has a way to try again
+    if (chartPayBtn) chartPayBtn.style.display = '';
+    setStatus(ppChartContainer, 'error', 'Payment unavailable. Please try again or contact us.');
   }
+}
 
-  // ── Monthly subscription button ──
-  if (loadingSub) loadingSub.remove();
+/**
+ * Show the subscription container and render the PayPal subscription button.
+ * Safe to call multiple times – rendering only happens once.
+ */
+async function showSubscriptionPayment() {
+  if (subPayBtn) subPayBtn.style.display = 'none';
+  if (ppSubContainer) ppSubContainer.style.display = 'block';
 
-  if (subscriptionReady && ppSubContainer) {
+  if (subButtonRendered) return; // already rendered on a previous click
+  subButtonRendered = true;
+
+  setStatus(ppSubContainer, 'loading', 'Connecting to PayPal' + ELLIPSIS);
+
+  try {
+    const config = await getPayPalConfig();
+    const { clientId, subscriptionPlanId } = config;
+
+    if (!clientId || clientId === 'your_paypal_client_id_here') {
+      showConfigError();
+      return;
+    }
+
+    const hasSubPlan = subscriptionPlanId && subscriptionPlanId !== 'your_subscription_plan_id_here';
+
+    if (!hasSubPlan) {
+      clearStatus(ppSubContainer);
+      const loadingSub = document.getElementById('paypal-loading-sub');
+      if (loadingSub) loadingSub.remove();
+      ppSubContainer.innerHTML = `
+        <p style="color:var(--dim-text);font-size:0.85rem;text-align:center;padding:0.75rem 0;">
+          Subscription payments coming soon.<br>
+          <a href="mailto:hello@celestialeye.app" style="color:var(--stardust);">Contact us to get started</a>
+        </p>`;
+      return;
+    }
+
+    await ensurePayPalSubscriptionSdk(clientId);
+
+    clearStatus(ppSubContainer);
+    const loadingSub = document.getElementById('paypal-loading-sub');
+    if (loadingSub) loadingSub.remove();
+
     window.paypalSubscription.Buttons({
       style: {
         layout: 'vertical',
@@ -322,6 +345,8 @@ function renderPaymentButtons(subscriptionPlanId, ordersReady, subscriptionReady
           if (!result.active) {
             throw new Error(`Subscription is not active (status: ${result.status}). Please try again or contact support.`);
           }
+          // Persist the subscription ID so the birth-chart page can verify access
+          // on the current visit and after a page refresh.
           try { localStorage.setItem('subscriptionID', data.subscriptionID); } catch (_) { /* localStorage unavailable */ }
           window.location.href = '/success.html?type=subscription';
         } catch (err) {
@@ -341,15 +366,26 @@ function renderPaymentButtons(subscriptionPlanId, ordersReady, subscriptionReady
       console.error('Failed to render subscription button:', err);
       setStatus(ppSubContainer, 'error', 'Subscription unavailable. Please refresh the page or contact support.');
     });
-  } else if (ppSubContainer) {
-    // Show a contact/waitlist message if no plan ID configured
-    ppSubContainer.innerHTML = `
-      <p style="color:var(--dim-text);font-size:0.85rem;text-align:center;padding:0.75rem 0;">
-        Subscription payments coming soon.<br>
-        <a href="mailto:hello@celestialeye.app" style="color:var(--stardust);">Contact us to get started</a>
-      </p>`;
+
+  } catch (err) {
+    console.warn('PayPal subscription load failed:', err.message);
+    subButtonRendered = false; // allow retry on next click
+    // Re-show the CTA button so the user has a way to try again
+    if (subPayBtn) subPayBtn.style.display = '';
+    setStatus(ppSubContainer, 'error', 'Subscription unavailable. Please try again or contact us.');
   }
 }
 
-// Kick off PayPal loading
-loadPayPal();
+// ── Wire up CTA buttons ─────────────────────────────────────
+if (chartPayBtn) {
+  chartPayBtn.addEventListener('click', showChartPayment);
+}
+if (subPayBtn) {
+  subPayBtn.addEventListener('click', showSubscriptionPayment);
+}
+
+// ── Pre-fetch PayPal config in background ───────────────────
+// Warms the cache so button rendering is faster when the user clicks a CTA.
+getPayPalConfig().catch(err => {
+  console.warn('PayPal config pre-fetch failed:', err.message);
+});

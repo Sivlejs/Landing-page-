@@ -534,6 +534,47 @@ app.post('/api/paypal/verify-subscription', apiLimiter, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// API: check active subscription status (reload / page-refresh support)
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /api/paypal/check-subscription?subscriptionID=I-XXXXXXXXXXXX
+ *
+ * Called on page load when localStorage contains a subscriptionID saved from
+ * a previous session.  Verifies the subscription is still ACTIVE or APPROVED
+ * against the PayPal Subscriptions API.
+ *
+ * Analogous to GET /api/verify-access for one-time order IDs.
+ *
+ * Response: { active: boolean, status?: string }
+ */
+app.get('/api/paypal/check-subscription', apiLimiter, async (req, res) => {
+  const rawId = (req.query.subscriptionID || '').toString().trim();
+
+  if (!PAYPAL_SUBSCRIPTION_ID_PATTERN.test(rawId)) {
+    return res.json({ active: false });
+  }
+
+  try {
+    const accessToken = await getPayPalAccessToken();
+
+    const subRes = await axios.get(
+      `${PAYPAL_BASE}/v1/billing/subscriptions/${rawId}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+
+    const { status } = subRes.data;
+    const active = status === 'ACTIVE' || status === 'APPROVED';
+
+    log(active ? 'info' : 'warn', 'check-subscription:result', { subscriptionID: rawId, status, active });
+    return res.json({ active, status });
+  } catch (err) {
+    log('warn', 'check-subscription:error', { subscriptionID: rawId, message: err.message });
+    return res.json({ active: false });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // API: PayPal Webhooks
 // ---------------------------------------------------------------------------
 
