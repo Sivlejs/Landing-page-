@@ -110,6 +110,14 @@ describe('check-plan plan ID validation', () => {
     // Validates the specific plan ID format P-7TU52859DC528615ANG7P2OY
     assert.deepEqual(planConfigured('P-7TU52859DC528615ANG7P2OY'), { configured: true });
   });
+
+  test('reports configured for the known plan ID after trimming whitespace', () => {
+    // Render (and other hosting platforms) can inject accidental whitespace
+    // around environment variable values.  server.js applies .trim() when
+    // reading PAYPAL_SUBSCRIPTION_PLAN_ID so this should always pass.
+    const raw = '  P-7TU52859DC528615ANG7P2OY  ';
+    assert.deepEqual(planConfigured(raw.trim()), { configured: true });
+  });
 });
 
 // ── subscription active-status logic ─────────────────────────────────────

@@ -10,11 +10,11 @@ const rateLimit = require('express-rate-limit');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const PAYPAL_MODE = process.env.PAYPAL_MODE || 'sandbox';
-const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID || '';
-const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET || '';
-const PAYPAL_SUBSCRIPTION_PLAN_ID = process.env.PAYPAL_SUBSCRIPTION_PLAN_ID || '';
-const PAYPAL_WEBHOOK_ID = process.env.PAYPAL_WEBHOOK_ID || '';
+const PAYPAL_MODE = (process.env.PAYPAL_MODE || 'sandbox').trim();
+const PAYPAL_CLIENT_ID = (process.env.PAYPAL_CLIENT_ID || '').trim();
+const PAYPAL_CLIENT_SECRET = (process.env.PAYPAL_CLIENT_SECRET || '').trim();
+const PAYPAL_SUBSCRIPTION_PLAN_ID = (process.env.PAYPAL_SUBSCRIPTION_PLAN_ID || '').trim();
+const PAYPAL_WEBHOOK_ID = (process.env.PAYPAL_WEBHOOK_ID || '').trim();
 
 // ---------------------------------------------------------------------------
 // Structured logger
