@@ -81,6 +81,11 @@ if (PAYPAL_MODE === 'live' && PAYPAL_CLIENT_ID) {
 
 if (!PAYPAL_SUBSCRIPTION_PLAN_ID || PAYPAL_SUBSCRIPTION_PLAN_ID === PLACEHOLDER_PLAN) {
   log('warn', 'startup:no-plan', { message: 'PAYPAL_SUBSCRIPTION_PLAN_ID not set – subscription payments will be unavailable.' });
+} else if (!/^P-[A-Z0-9]{6,30}$/.test(PAYPAL_SUBSCRIPTION_PLAN_ID)) {
+  log('warn', 'startup:invalid-plan-format', {
+    message: 'PAYPAL_SUBSCRIPTION_PLAN_ID does not look like a valid PayPal plan ID (expected P-… format).',
+    hint: 'Create a billing plan in the PayPal Developer Dashboard and copy the Plan ID (starts with P-).',
+  });
 }
 
 if (!PAYPAL_WEBHOOK_ID) {
@@ -102,7 +107,7 @@ const PAYPAL_BASE =
     ? 'https://api-m.paypal.com'
     : 'https://api-m.sandbox.paypal.com';
 
-const { recordPaidOrder, hasInMemoryAccess, PAYPAL_ORDER_ID_PATTERN } = require('./lib/entitlement');
+const { recordPaidOrder, hasInMemoryAccess, PAYPAL_ORDER_ID_PATTERN, PAYPAL_SUBSCRIPTION_ID_PATTERN } = require('./lib/entitlement');
 
 // ---------------------------------------------------------------------------
 // In-memory webhook event log (dedup + audit trail)
@@ -392,6 +397,79 @@ app.get('/api/verify-access', apiLimiter, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// API: verify a subscription after PayPal onApprove
+// ---------------------------------------------------------------------------
+
+/**
+ * POST /api/paypal/verify-subscription
+ *
+ * Called by the client immediately after PayPal's onApprove fires for a
+ * subscription button.  Fetches the subscription from PayPal and confirms
+ * it is ACTIVE or APPROVED before the browser is redirected to success.
+ *
+ * Body: { subscriptionID: "I-XXXXXXXXXXXX" }
+ * Response: { active: boolean, status: string, subscriptionID: string, correlationId: string }
+ */
+app.post('/api/paypal/verify-subscription', apiLimiter, async (req, res) => {
+  const correlationId = makeCorrelationId();
+  const { subscriptionID } = req.body || {};
+
+  if (!subscriptionID || typeof subscriptionID !== 'string') {
+    log('warn', 'verify-subscription:missing-id', { correlationId });
+    return res.status(400).json({ error: 'subscriptionID is required', correlationId });
+  }
+
+  if (!PAYPAL_SUBSCRIPTION_ID_PATTERN.test(subscriptionID)) {
+    log('warn', 'verify-subscription:invalid-id', { correlationId, subscriptionID });
+    return res.status(400).json({ error: 'Invalid subscription ID format', correlationId });
+  }
+
+  log('info', 'verify-subscription:start', { correlationId, subscriptionID });
+
+  try {
+    const accessToken = await getPayPalAccessToken();
+
+    const subRes = await axios.get(
+      `${PAYPAL_BASE}/v1/billing/subscriptions/${subscriptionID}`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
+
+    const { status, plan_id, id } = subRes.data;
+
+    // A freshly-approved subscription may briefly show APPROVED before
+    // transitioning to ACTIVE.  Both states mean the subscriber has agreed
+    // to the plan and the first payment will be collected.
+    const active = status === 'ACTIVE' || status === 'APPROVED';
+
+    log(active ? 'info' : 'warn', 'verify-subscription:result', {
+      correlationId,
+      subscriptionID: id,
+      planId: plan_id,
+      status,
+      active,
+    });
+
+    res.json({ active, subscriptionID: id, status, correlationId });
+  } catch (err) {
+    log('error', 'verify-subscription:fail', {
+      correlationId,
+      subscriptionID,
+      httpStatus: err.response?.status,
+      paypalError: err.response?.data?.name,
+      paypalMessage: err.response?.data?.message,
+      message: err.message,
+    });
+    res.status(500).json({
+      error: 'Failed to verify subscription',
+      detail: err.response?.data?.message || err.message,
+      correlationId,
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // API: PayPal Webhooks
 // ---------------------------------------------------------------------------
 
@@ -517,6 +595,27 @@ app.post(
 
       case 'BILLING.SUBSCRIPTION.PAYMENT.FAILED':
         log('warn', 'webhook:subscription-payment-failed', {
+          correlationId,
+          subscriptionId: event.resource && event.resource.id,
+        });
+        break;
+
+      case 'BILLING.SUBSCRIPTION.RENEWED':
+        log('info', 'webhook:subscription-renewed', {
+          correlationId,
+          subscriptionId: event.resource && event.resource.id,
+        });
+        break;
+
+      case 'BILLING.SUBSCRIPTION.EXPIRED':
+        log('info', 'webhook:subscription-expired', {
+          correlationId,
+          subscriptionId: event.resource && event.resource.id,
+        });
+        break;
+
+      case 'BILLING.SUBSCRIPTION.SUSPENDED':
+        log('warn', 'webhook:subscription-suspended', {
           correlationId,
           subscriptionId: event.resource && event.resource.id,
         });

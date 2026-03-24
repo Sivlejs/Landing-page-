@@ -268,10 +268,28 @@ function renderPaymentButtons(subscriptionPlanId) {
         return actions.subscription.create({ plan_id: subscriptionPlanId });
       },
 
-      onApprove: (data) => {
+      onApprove: async (data) => {
         setStatus(ppSubContainer, 'loading', 'Activating your subscription' + ELLIPSIS);
-        console.log('Subscription approved, ID:', data.subscriptionID);
-        window.location.href = '/success.html?type=subscription';
+        try {
+          const r = await fetch('/api/paypal/verify-subscription', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subscriptionID: data.subscriptionID }),
+          });
+          const result = await r.json();
+          if (!r.ok) {
+            const refCode = result.correlationId || 'unknown';
+            const detail = result.error || 'unknown error';
+            throw new Error(`Subscription verification failed – ${detail} (ref: ${refCode})`);
+          }
+          if (!result.active) {
+            throw new Error(`Subscription is not active (status: ${result.status}). Please try again or contact support.`);
+          }
+          try { localStorage.setItem('subscriptionID', data.subscriptionID); } catch (_) { /* localStorage unavailable */ }
+          window.location.href = '/success.html?type=subscription';
+        } catch (err) {
+          setStatus(ppSubContainer, 'error', err.message);
+        }
       },
 
       onCancel: () => {
