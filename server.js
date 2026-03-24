@@ -16,6 +16,10 @@ const PAYPAL_CLIENT_SECRET = (process.env.PAYPAL_CLIENT_SECRET || '').trim();
 const PAYPAL_SUBSCRIPTION_PLAN_ID = (process.env.PAYPAL_SUBSCRIPTION_PLAN_ID || '').trim();
 const PAYPAL_WEBHOOK_ID = (process.env.PAYPAL_WEBHOOK_ID || '').trim();
 
+// URL to redirect subscribers to after a successful subscription payment.
+// If not set, subscribers are redirected to the birth chart page (/birth-chart).
+const FRONTEND_URL = (process.env.FRONTEND_URL || '').trim();
+
 // ---------------------------------------------------------------------------
 // Structured logger
 // ---------------------------------------------------------------------------
@@ -245,6 +249,7 @@ app.get('/api/paypal/config', apiLimiter, (_req, res) => {
     clientId: PAYPAL_CLIENT_ID,
     subscriptionPlanId: PAYPAL_SUBSCRIPTION_PLAN_ID,
     mode: PAYPAL_MODE,
+    frontendUrl: FRONTEND_URL || null,
   });
 });
 

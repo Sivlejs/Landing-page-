@@ -245,7 +245,7 @@ async function showChartPayment() {
           // Persist the order ID so the birth-chart page can verify access
           // on the current visit and after a page refresh.
           try { localStorage.setItem('chartAccessToken', data.orderID); } catch (_) { /* private browsing */ }
-          window.location.href = '/success?type=chart';
+          window.location.href = '/birth-chart';
         } catch (err) {
           setStatus(ppChartContainer, 'error', err.message);
         }
@@ -350,7 +350,9 @@ async function showSubscriptionPayment() {
           if (!result.active) {
             throw new Error(`Subscription is not active (status: ${result.status}). Please try again or contact support.`);
           }
-          window.location.href = '/success?type=subscription';
+          // Redirect subscribers to the configured frontend URL, falling back to the birth chart page.
+          const destUrl = (config.frontendUrl && config.frontendUrl.trim()) ? config.frontendUrl : '/birth-chart';
+          window.location.href = destUrl;
         } catch (err) {
           setStatus(ppSubContainer, 'error', err.message);
         }
