@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <!-- Deep space gradient background -->
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#1a0a3a"/>
+      <stop offset="50%" stop-color="#0d0520"/>
+      <stop offset="100%" stop-color="#050010"/>
+    </radialGradient>
+    <!-- Purple nebula glow -->
+    <radialGradient id="nebula1" cx="30%" cy="40%" r="40%">
+      <stop offset="0%" stop-color="#7b2ff7" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#7b2ff7" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Gold nebula glow -->
+    <radialGradient id="nebula2" cx="75%" cy="65%" r="35%">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Eye iris gradient -->
+    <radialGradient id="irisGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#9d4edd"/>
+      <stop offset="50%" stop-color="#6d28d9"/>
+      <stop offset="100%" stop-color="#4c1d95"/>
+    </radialGradient>
+    <!-- Outer eye glow -->
+    <radialGradient id="eyeGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#a855f7" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Gold border gradient -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="50%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="softGlow">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bgGrad)"/>
+  <rect width="1200" height="630" fill="url(#nebula1)"/>
+  <rect width="1200" height="630" fill="url(#nebula2)"/>
+
+  <!-- Stars -->
+  <g fill="white" opacity="0.8">
+    <circle cx="80" cy="45" r="1.5"/>
+    <circle cx="180" cy="90" r="1"/>
+    <circle cx="320" cy="30" r="2"/>
+    <circle cx="450" cy="75" r="1.5"/>
+    <circle cx="580" cy="20" r="1"/>
+    <circle cx="720" cy="55" r="2"/>
+    <circle cx="860" cy="35" r="1.5"/>
+    <circle cx="970" cy="80" r="1"/>
+    <circle cx="1100" cy="25" r="2"/>
+    <circle cx="1150" cy="70" r="1.5"/>
+    <circle cx="50" cy="200" r="1"/>
+    <circle cx="150" cy="350" r="1.5"/>
+    <circle cx="200" cy="500" r="1"/>
+    <circle cx="1050" cy="200" r="1.5"/>
+    <circle cx="1150" cy="380" r="1"/>
+    <circle cx="1100" cy="550" r="2"/>
+    <circle cx="40" cy="580" r="1.5"/>
+    <circle cx="250" cy="600" r="1"/>
+    <circle cx="950" cy="590" r="1.5"/>
+    <circle cx="700" cy="610" r="1"/>
+    <circle cx="400" cy="590" r="2"/>
+    <circle cx="100" cy="140" r="1"/>
+    <circle cx="900" cy="140" r="1.5"/>
+    <circle cx="1000" cy="450" r="1"/>
+    <circle cx="300" cy="440" r="1.5"/>
+  </g>
+
+  <!-- Celestial eye glow aura -->
+  <ellipse cx="600" cy="260" rx="140" ry="140" fill="url(#eyeGlow)" opacity="0.8"/>
+
+  <!-- Eye rays -->
+  <g stroke="url(#goldGrad)" stroke-width="1.5" opacity="0.5" transform="translate(600,260)">
+    <line x1="0" y1="-110" x2="0" y2="-145"/>
+    <line x1="78" y1="-78" x2="103" y2="-103"/>
+    <line x1="110" y1="0" x2="145" y2="0"/>
+    <line x1="78" y1="78" x2="103" y2="103"/>
+    <line x1="0" y1="110" x2="0" y2="145"/>
+    <line x1="-78" y1="78" x2="-103" y2="103"/>
+    <line x1="-110" y1="0" x2="-145" y2="0"/>
+    <line x1="-78" y1="-78" x2="-103" y2="-103"/>
+  </g>
+
+  <!-- Outer eye ring (gold border) -->
+  <circle cx="600" cy="260" r="100" fill="none" stroke="url(#goldGrad)" stroke-width="3" filter="url(#glow)"/>
+
+  <!-- Outer white of eye -->
+  <circle cx="600" cy="260" r="95" fill="#1e0b40" stroke="#6d28d9" stroke-width="1"/>
+
+  <!-- Iris -->
+  <circle cx="600" cy="260" r="72" fill="url(#irisGrad)" filter="url(#glow)"/>
+
+  <!-- Iris detail rings -->
+  <circle cx="600" cy="260" r="60" fill="none" stroke="#c084fc" stroke-width="1" opacity="0.5"/>
+  <circle cx="600" cy="260" r="48" fill="none" stroke="#a855f7" stroke-width="1" opacity="0.4"/>
+
+  <!-- Pupil -->
+  <circle cx="600" cy="260" r="30" fill="#0a0015"/>
+
+  <!-- Pupil star glint -->
+  <circle cx="614" cy="248" r="6" fill="white" opacity="0.7"/>
+  <circle cx="618" cy="252" r="2.5" fill="white" opacity="0.4"/>
+
+  <!-- Inner iris shimmer -->
+  <ellipse cx="585" cy="248" rx="18" ry="10" fill="#c084fc" opacity="0.25" transform="rotate(-25,585,248)"/>
+
+  <!-- Gold dot accent on iris -->
+  <circle cx="600" cy="260" r="3" fill="url(#goldGrad)" opacity="0.9"/>
+
+  <!-- Logo text -->
+  <text x="600" y="410" font-family="Georgia, serif" font-size="52" font-weight="bold"
+        fill="white" text-anchor="middle" filter="url(#softGlow)">Celestial Eye</text>
+
+  <!-- Gold underline -->
+  <rect x="420" y="422" width="360" height="3" rx="1.5" fill="url(#goldGrad)" opacity="0.9"/>
+
+  <!-- Tagline -->
+  <text x="600" y="470" font-family="Georgia, serif" font-size="24" fill="#c084fc"
+        text-anchor="middle" letter-spacing="3" opacity="0.9">COSMIC INTELLIGENCE</text>
+
+  <!-- Subtitle description -->
+  <text x="600" y="515" font-family="Arial, sans-serif" font-size="18" fill="#d8b4fe"
+        text-anchor="middle" opacity="0.8">Unlock your birth chart · Daily cosmic guidance · Nexus AI</text>
+
+  <!-- Small decorative stars -->
+  <text x="490" y="470" font-family="Arial" font-size="16" fill="#f59e0b" opacity="0.7">✦</text>
+  <text x="695" y="470" font-family="Arial" font-size="16" fill="#f59e0b" opacity="0.7">✦</text>
+
+  <!-- Bottom accent dots -->
+  <g fill="#7c3aed" opacity="0.6">
+    <circle cx="560" cy="555" r="3"/>
+    <circle cx="580" cy="555" r="3"/>
+    <circle cx="600" cy="555" r="3"/>
+    <circle cx="620" cy="555" r="3"/>
+    <circle cx="640" cy="555" r="3"/>
+  </g>
+
+  <!-- Border frame -->
+  <rect x="20" y="20" width="1160" height="590" rx="12" ry="12"
+        fill="none" stroke="url(#goldGrad)" stroke-width="2" opacity="0.4"/>
+</svg>
