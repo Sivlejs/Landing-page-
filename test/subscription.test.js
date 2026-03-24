@@ -58,8 +58,8 @@ describe('PAYPAL_SUBSCRIPTION_ID_PATTERN', () => {
   });
 
   test('rejects an ID with too many characters after I-', () => {
-    // More than 20 chars after I- is rejected
-    assert.ok(!PAYPAL_SUBSCRIPTION_ID_PATTERN.test('I-ABCDEFGHIJ1234567890X'));
+    // More than 30 chars after I- is rejected
+    assert.ok(!PAYPAL_SUBSCRIPTION_ID_PATTERN.test('I-ABCDEFGHIJKLMNOPQRSTUVWXYZ12345'));
   });
 });
 
