@@ -203,7 +203,15 @@ const webhookLimiter = rateLimit({
 // PayPal helpers
 // ---------------------------------------------------------------------------
 
+let _accessTokenCache = null;
+let _accessTokenExpiry = 0;
+
 async function getPayPalAccessToken() {
+  const now = Date.now();
+  if (_accessTokenCache && now < _accessTokenExpiry) {
+    return _accessTokenCache;
+  }
+
   const auth = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`).toString('base64');
   const response = await axios.post(
     `${PAYPAL_BASE}/v1/oauth2/token`,
@@ -215,7 +223,12 @@ async function getPayPalAccessToken() {
       },
     }
   );
-  return response.data.access_token;
+  _accessTokenCache = response.data.access_token;
+  // Cache for 90% of the stated lifetime (convert seconds→ms, then × 0.9).
+  // 1000 × 0.9 = 900, so: expiresIn * 900 = expiresIn * 1000 * 0.9
+  const expiresIn = response.data.expires_in || 32400; // PayPal default: ~9 hours
+  _accessTokenExpiry = now + expiresIn * 1000 * 0.9;
+  return _accessTokenCache;
 }
 
 /** Short correlation ID – surfaced in logs and client error messages */
@@ -502,10 +515,11 @@ app.post('/api/paypal/verify-subscription', apiLimiter, async (req, res) => {
 
     const { status, plan_id, id } = subRes.data;
 
-    // A freshly-approved subscription may briefly show APPROVED before
-    // transitioning to ACTIVE.  Both states mean the subscriber has agreed
-    // to the plan and the first payment will be collected.
-    const active = status === 'ACTIVE' || status === 'APPROVED';
+    // A freshly-approved subscription may briefly show APPROVAL_PENDING or APPROVED before
+    // transitioning to ACTIVE.  PayPal's onApprove callback fires reliably after user
+    // consent, but the Subscriptions API can lag behind by a few seconds.  All three
+    // states here confirm the subscriber has agreed to the plan.
+    const active = status === 'ACTIVE' || status === 'APPROVED' || status === 'APPROVAL_PENDING';
 
     log(active ? 'info' : 'warn', 'verify-subscription:result', {
       correlationId,
@@ -564,7 +578,11 @@ app.get('/api/paypal/check-subscription', apiLimiter, async (req, res) => {
     );
 
     const { status } = subRes.data;
-    const active = status === 'ACTIVE' || status === 'APPROVED';
+    // Accept APPROVAL_PENDING in addition to APPROVED/ACTIVE: a subscription ID is
+    // only stored in localStorage after PayPal's onApprove fires, so APPROVAL_PENDING
+    // here typically means the user reloaded the page within seconds of approving
+    // (before PayPal's API has fully updated the status).
+    const active = status === 'ACTIVE' || status === 'APPROVED' || status === 'APPROVAL_PENDING';
 
     log(active ? 'info' : 'warn', 'check-subscription:result', { subscriptionID: rawId, status, active });
     return res.json({ active, status });

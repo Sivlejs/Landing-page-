@@ -329,6 +329,11 @@ async function showSubscriptionPayment() {
 
       onApprove: async (data) => {
         setStatus(ppSubContainer, 'loading', 'Activating your subscription' + ELLIPSIS);
+        // Persist the subscription ID immediately when PayPal's onApprove fires.
+        // Saving before the server verification ensures the ID is retained across
+        // page reloads even if the verification request is slow or the server
+        // briefly restarts (e.g. Render free-tier cold starts).
+        try { localStorage.setItem('subscriptionID', data.subscriptionID); } catch (_) { /* private browsing */ }
         try {
           const r = await fetch('/api/paypal/verify-subscription', {
             method: 'POST',
@@ -344,9 +349,6 @@ async function showSubscriptionPayment() {
           if (!result.active) {
             throw new Error(`Subscription is not active (status: ${result.status}). Please try again or contact support.`);
           }
-          // Persist the subscription ID so the birth-chart page can verify access
-          // on the current visit and after a page refresh.
-          try { localStorage.setItem('subscriptionID', data.subscriptionID); } catch (_) { /* localStorage unavailable */ }
           window.location.href = '/success.html?type=subscription';
         } catch (err) {
           setStatus(ppSubContainer, 'error', err.message);
