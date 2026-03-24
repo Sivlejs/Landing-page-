@@ -195,7 +195,7 @@ async function showChartPayment() {
 
   try {
     const config = await getPayPalConfig();
-    const { clientId } = config;
+    const clientId = (config.clientId || '').trim();
 
     if (!clientId || clientId === 'your_paypal_client_id_here') {
       showConfigError();
@@ -245,7 +245,7 @@ async function showChartPayment() {
           // Persist the order ID so the birth-chart page can verify access
           // on the current visit and after a page refresh.
           try { localStorage.setItem('chartAccessToken', data.orderID); } catch (_) { /* private browsing */ }
-          window.location.href = '/success.html?type=chart';
+          window.location.href = '/success?type=chart';
         } catch (err) {
           setStatus(ppChartContainer, 'error', err.message);
         }
@@ -288,7 +288,8 @@ async function showSubscriptionPayment() {
 
   try {
     const config = await getPayPalConfig();
-    const { clientId, subscriptionPlanId } = config;
+    const clientId = (config.clientId || '').trim();
+    const subscriptionPlanId = (config.subscriptionPlanId || '').trim();
 
     if (!clientId || clientId === 'your_paypal_client_id_here') {
       showConfigError();
@@ -349,7 +350,7 @@ async function showSubscriptionPayment() {
           if (!result.active) {
             throw new Error(`Subscription is not active (status: ${result.status}). Please try again or contact support.`);
           }
-          window.location.href = '/success.html?type=subscription';
+          window.location.href = '/success?type=subscription';
         } catch (err) {
           setStatus(ppSubContainer, 'error', err.message);
         }
